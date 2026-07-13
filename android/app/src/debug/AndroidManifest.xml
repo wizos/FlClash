@@ -12,5 +12,14 @@
             android:name=".TileService"
             android:label="FlClash Debug"
             tools:replace="android:label" />
+        <activity
+            android:name=".RuntimeMemoryActivity"
+            android:exported="true"
+            android:theme="@style/TransparentTheme">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="${applicationId}.action.RUNTIME_MEMORY" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

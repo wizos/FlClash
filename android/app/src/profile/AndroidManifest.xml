@@ -4,4 +4,15 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <application>
+        <activity
+            android:name=".RuntimeMemoryActivity"
+            android:exported="true"
+            android:theme="@style/TransparentTheme">
+            <intent-filter>
+                <category android:name="android.intent.category.DEFAULT" />
+                <action android:name="${applicationId}.action.RUNTIME_MEMORY" />
+            </intent-filter>
+        </activity>
+    </application>
 </manifest>
