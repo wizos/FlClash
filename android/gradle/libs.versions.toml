@@ -18,10 +18,10 @@ firebaseCommonKtx = "22.1.0"
 androidx-core = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
 annotation-jvm = { module = "androidx.annotation:annotation-jvm", version.ref = "annotationJvm" }
 core-splashscreen = { module = "androidx.core:core-splashscreen", version.ref = "coreSplashscreen" }
-firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
-firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
-firebase-crashlytics-ndk = { module = "com.google.firebase:firebase-crashlytics-ndk" }
+#firebase-analytics = { module = "com.google.firebase:firebase-analytics" }
+#firebase-bom = { module = "com.google.firebase:firebase-bom", version.ref = "firebaseBom" }
+#firebase-crashlytics-ndk = { module = "com.google.firebase:firebase-crashlytics-ndk" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 smali-dexlib2 = { module = "com.android.tools.smali:smali-dexlib2", version.ref = "smaliDexlib2" }
-firebase-crashlytics-ktx = { group = "com.google.firebase", name = "firebase-crashlytics-ktx", version.ref = "firebaseCrashlyticsKtx" }
-firebase-common-ktx = { group = "com.google.firebase", name = "firebase-common-ktx", version.ref = "firebaseCommonKtx" }
+#firebase-crashlytics-ktx = { group = "com.google.firebase", name = "firebase-crashlytics-ktx", version.ref = "firebaseCrashlyticsKtx" }
+#firebase-common-ktx = { group = "com.google.firebase", name = "firebase-common-ktx", version.ref = "firebaseCommonKtx" }

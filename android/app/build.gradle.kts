@@ -4,8 +4,8 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("dev.flutter.flutter-gradle-plugin")
-    id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
+    // id("com.google.gms.google-services")
+    // id("com.google.firebase.crashlytics")
 }
 
 val localProperties = Properties().apply {
@@ -15,7 +15,7 @@ val localProperties = Properties().apply {
     }
 }
 
-val mStoreFile: File = file("keystore.jks")
+val mStoreFile: File = rootProject.file("me-wizos-flanch.jks")
 val mStorePassword: String? = localProperties.getProperty("storePassword")
 val mKeyAlias: String? = localProperties.getProperty("keyAlias")
 val mKeyPassword: String? = localProperties.getProperty("keyPassword")
@@ -36,7 +36,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.follow.clash"
+        applicationId = "me.wizos.flanch2"
         minSdk = flutter.minSdkVersion
         targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = flutter.versionCode
@@ -102,7 +102,7 @@ dependencies {
     implementation(libs.smali.dexlib2) {
         exclude(group = "com.google.guava", module = "guava")
     }
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.crashlytics.ndk)
-    implementation(libs.firebase.analytics)
+    // implementation(platform(libs.firebase.bom))
+    // implementation(libs.firebase.crashlytics.ndk)
+    // implementation(libs.firebase.analytics)
 }

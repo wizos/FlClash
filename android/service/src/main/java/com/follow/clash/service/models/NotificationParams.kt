@@ -4,7 +4,7 @@ import android.os.Parcel
 import android.os.Parcelable
 
 data class NotificationParams(
-    val title: String = "FlClash",
+    val title: String = "Flanch2",
     val stopText: String = "STOP",
     val onlyStatisticsProxy: Boolean = false,
 ) : Parcelable {
