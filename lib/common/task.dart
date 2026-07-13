@@ -544,16 +544,25 @@ Future<MigrationData> _restoreTask(RootIsolateToken token) async {
   final homeDirPath = await appPath.homeDirPath;
   final zipDecoder = ZipDecoder();
   final input = InputFileStream(backupFilePath);
-  final archive = zipDecoder.decodeStream(input);
-  final dir = Directory(restoreDirPath);
-  await dir.create(recursive: true);
-  for (final file in archive.files) {
-    final outPath = join(restoreDirPath, posix.normalize(file.name));
-    final outputStream = OutputFileStream(outPath);
-    file.writeContent(outputStream);
-    await outputStream.close();
+  try {
+    final archive = zipDecoder.decodeStream(input);
+    final dir = Directory(restoreDirPath);
+    await dir.create(recursive: true);
+    final restoreRoot = normalize(absolute(restoreDirPath));
+    for (final file in archive.files) {
+      final outPath = join(restoreDirPath, posix.normalize(file.name));
+      final normalizedOutPath = normalize(absolute(outPath));
+      if (normalizedOutPath != restoreRoot &&
+          !isWithin(restoreRoot, normalizedOutPath)) {
+        throw currentAppLocalizations.invalidBackupFile;
+      }
+      final outputStream = OutputFileStream(outPath);
+      file.writeContent(outputStream);
+      await outputStream.close();
+    }
+  } finally {
+    await input.close();
   }
-  await input.close();
   final restoreConfigFile = File(join(restoreDirPath, configJsonName));
   if (!await restoreConfigFile.exists()) {
     throw currentAppLocalizations.invalidBackupFile;
