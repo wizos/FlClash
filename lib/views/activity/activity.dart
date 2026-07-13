@@ -128,13 +128,13 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
     super.dispose();
   }
 
-  List<Widget> _buildActions() {
+  List<Widget> _buildActions(BuildContext context) {
     return [
       IconButton(
         onPressed: () async {
           ref.read(requestsProvider.notifier).clear();
         },
-        tooltip: '清空活动',
+        tooltip: context.appLocalizations.clearActivity,
         icon: const Icon(Icons.delete_sweep_outlined),
       ),
     ];
@@ -142,11 +142,12 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
 
   @override
   Widget build(BuildContext context) {
+    final appLocalizations = context.appLocalizations;
     return CommonScaffold(
-      title: '活动',
+      title: appLocalizations.activity,
       searchState: AppBarSearchState(onSearch: _onSearch),
       onKeywordsUpdate: _onKeywordsUpdate,
-      actions: _buildActions(),
+      actions: _buildActions(context),
       floatingActionButton: ValueListenableBuilder(
         valueListenable: _stateNotifier,
         builder: (_, state, _) {
@@ -171,7 +172,7 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
         builder: (context, state, _) {
           final items = state.filteredList;
           if (items.isEmpty) {
-            return const NullStatus(label: '暂无活动');
+            return NullStatus(label: appLocalizations.activityEmpty);
           }
           return Column(
             children: [

@@ -42,6 +42,7 @@ class ActivityItemWidget extends ConsumerWidget {
     TrackerInfo trackerInfo,
     ActivityStatus status,
   ) {
+    final appLocalizations = context.appLocalizations;
     final progress = trackerInfo.progressText.isNotEmpty
         ? '${trackerInfo.progressText} · '
         : '';
@@ -62,7 +63,7 @@ class ActivityItemWidget extends ConsumerWidget {
         }
       }
       if (errorSummary.isEmpty) {
-        errorSummary = ' · 连接失败';
+        errorSummary = ' · ${appLocalizations.connectionFailed}';
       }
     }
     return '${trackerInfo.start.getLastUpdateTimeDesc(context)}$rule$progress · ${traffic.desc}$errorSummary';
@@ -210,7 +211,9 @@ class ActivityItemWidget extends ConsumerWidget {
                 builder: (_) {
                   return AdaptiveSheetScaffold(
                     body: ActivityDetailView(activityItem: activityItem),
-                    title: '活动详情',
+                    title: context.appLocalizations.details(
+                      context.appLocalizations.activity,
+                    ),
                   );
                 },
               );

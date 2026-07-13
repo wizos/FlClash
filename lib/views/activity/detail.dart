@@ -103,26 +103,27 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
   }
 
   Widget _buildTimelineHeader(BuildContext context) {
+    final appLocalizations = context.appLocalizations;
     return ListItem(
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
-            '请求链路',
+            appLocalizations.requestPath,
             style: context.textTheme.labelLarge?.copyWith(
               color: context.colorScheme.onSurfaceVariant.opacity80,
             ),
           ),
           IconButton(
             icon: const Icon(Icons.copy, size: 18),
-            tooltip: '复制诊断信息',
+            tooltip: appLocalizations.copyDiagnosticInfo,
             onPressed: () {
               final text = _buildDiagnosticText();
               Clipboard.setData(ClipboardData(text: text));
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('已复制到剪贴板'),
-                  duration: Duration(seconds: 1),
+                SnackBar(
+                  content: Text(appLocalizations.copiedToClipboard),
+                  duration: const Duration(seconds: 1),
                 ),
               );
             },
@@ -133,28 +134,41 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
   }
 
   String _buildDiagnosticText() {
+    final appLocalizations = currentAppLocalizations;
     final trackerInfo = _trackerInfo;
     final metadata = trackerInfo.metadata;
     final dnsTrace = trackerInfo.dnsTrace;
     final buf = StringBuffer();
 
-    buf.writeln('=== 请求诊断信息 ===');
-    buf.writeln('Host: ${metadata.host}');
-    buf.writeln('目标: ${metadata.destinationIP}:${metadata.destinationPort}');
-    buf.writeln('进程: ${metadata.process}');
+    buf.writeln('=== ${appLocalizations.requestDiagnosticInfo} ===');
+    buf.writeln('${appLocalizations.host}: ${metadata.host}');
     buf.writeln(
-      '规则: ${trackerInfo.rule}${trackerInfo.rulePayload.isNotEmpty ? '(${trackerInfo.rulePayload})' : ''}',
+      '${appLocalizations.destination}: '
+      '${metadata.destinationIP}:${metadata.destinationPort}',
     );
-    buf.writeln('代理链: ${trackerInfo.chains.join(' → ')}');
-    buf.writeln('上传: ${trackerInfo.upload}  下载: ${trackerInfo.download}');
+    buf.writeln('${appLocalizations.process}: ${metadata.process}');
+    buf.writeln(
+      '${appLocalizations.rule}: '
+      '${trackerInfo.rule}'
+      '${trackerInfo.rulePayload.isNotEmpty ? '(${trackerInfo.rulePayload})' : ''}',
+    );
+    buf.writeln(
+      '${appLocalizations.proxyChains}: ${trackerInfo.chains.join(' → ')}',
+    );
+    buf.writeln(
+      '${appLocalizations.upload}: ${trackerInfo.upload}  '
+      '${appLocalizations.download}: ${trackerInfo.download}',
+    );
     buf.writeln();
 
-    buf.writeln('--- DNS Trace ---');
+    buf.writeln('--- ${appLocalizations.dnsTrace} ---');
     if (dnsTrace != null && dnsTrace.stages.isNotEmpty) {
       for (final stage in dnsTrace.stages) {
         buf.write('[${stage.name}] ');
         if (stage.name == 'hosts') {
-          buf.write(stage.matched ? '命中' : '未命中');
+          buf.write(
+            stage.matched ? appLocalizations.hit : appLocalizations.notHit,
+          );
         } else if (stage.name == 'resolve') {
           buf.write('server=${stage.server} ');
           if (stage.policyKey.isNotEmpty) {
@@ -169,13 +183,14 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
         buf.writeln();
       }
     } else {
-      buf.writeln('(无 DNS trace 数据)');
+      buf.writeln('(${appLocalizations.noDnsTraceData})');
     }
 
     return buf.toString();
   }
 
   Widget _buildTimeline(BuildContext context) {
+    final appLocalizations = context.appLocalizations;
     final trackerInfo = _trackerInfo;
     final status = _status;
     final metadata = trackerInfo.metadata;
@@ -186,11 +201,12 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
     // Stage 1: Intercept
     stages.add(
       _TimelineStage(
-        name: '拦截',
+        name: appLocalizations.intercept,
         status: _StageStatus.done,
         detail: metadata.process.isNotEmpty
-            ? '进程 ${metadata.process}${metadata.uid != 0 ? ' (${metadata.uid})' : ''}'
-            : '系统代理',
+            ? '${appLocalizations.process} ${metadata.process}'
+                  '${metadata.uid != 0 ? ' (${metadata.uid})' : ''}'
+            : appLocalizations.systemProxy,
       ),
     );
 
@@ -203,9 +219,9 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
         // Use real DNS trace data from Go core
         for (final dnsStage in dnsTrace.stages) {
           final stageName = switch (dnsStage.name) {
-            'hosts' => 'Hosts 查找',
-            'fakeip' => 'FakeIP 分配',
-            'resolve' => 'DNS 解析',
+            'hosts' => appLocalizations.hostsLookup,
+            'fakeip' => appLocalizations.fakeIpAllocation,
+            'resolve' => appLocalizations.dnsResolve,
             _ => 'DNS ${dnsStage.name}',
           };
 
@@ -217,7 +233,9 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
 
           final detailParts = <String>[];
           if (dnsStage.name == 'hosts') {
-            detailParts.add(dnsStage.matched ? '命中' : '未命中');
+            detailParts.add(
+              dnsStage.matched ? appLocalizations.hit : appLocalizations.notHit,
+            );
           } else if (dnsStage.name == 'fakeip') {
             if (host.isNotEmpty && destIP.isNotEmpty) {
               detailParts.add('$host → $destIP');
@@ -233,10 +251,12 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
               detailParts.add('policy: ${dnsStage.policyKey}');
             }
             if (dnsStage.cacheHit) {
-              detailParts.add('缓存命中');
+              detailParts.add(appLocalizations.cacheHit);
             }
             if (dnsStage.duration > 0) {
-              detailParts.add('耗时: ${dnsStage.duration}ms');
+              detailParts.add(
+                appLocalizations.elapsedMilliseconds(dnsStage.duration),
+              );
             }
           }
 
@@ -257,13 +277,13 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
             : '$host → $destIP';
         stages.add(
           _TimelineStage(
-            name: 'DNS 解析',
+            name: appLocalizations.dnsResolve,
             status: status == ActivityStatus.failed && destIP.isEmpty
                 ? _StageStatus.fail
                 : _StageStatus.done,
             detail: dnsDetail,
             error: status == ActivityStatus.failed && destIP.isEmpty
-                ? 'DNS 解析失败'
+                ? appLocalizations.dnsResolveFailed
                 : null,
           ),
         );
@@ -277,7 +297,7 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
       final ruleText = rulePayload.isNotEmpty ? '$rule($rulePayload)' : rule;
       stages.add(
         _TimelineStage(
-          name: '规则匹配',
+          name: appLocalizations.ruleMatch,
           status: _StageStatus.done,
           detail: ruleText,
         ),
@@ -290,7 +310,7 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
       if (chains.isNotEmpty && !chains.contains('DIRECT')) {
         stages.add(
           _TimelineStage(
-            name: '代理选择',
+            name: appLocalizations.proxySelection,
             status: _StageStatus.done,
             detail: chains.join(' → '),
           ),
@@ -301,39 +321,39 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
     // Stage 5: Connection / Rejected
     if (status == ActivityStatus.rejected) {
       stages.add(
-        const _TimelineStage(
-          name: '已拒绝',
+        _TimelineStage(
+          name: appLocalizations.activityRejected,
           status: _StageStatus.fail,
-          detail: '规则命中拒绝',
+          detail: appLocalizations.rejectedByRule,
         ),
       );
     } else if (status == ActivityStatus.ongoing) {
       stages.add(
         _TimelineStage(
-          name: '连接建立',
+          name: appLocalizations.connectionEstablishment,
           status: _StageStatus.active,
           detail: trackerInfo.chains.isNotEmpty
               ? '${trackerInfo.chains.last}:${metadata.destinationPort}'
-              : '连接中...',
+              : appLocalizations.connecting,
         ),
       );
     } else if (status == ActivityStatus.success) {
       stages.add(
         _TimelineStage(
-          name: '连接建立',
+          name: appLocalizations.connectionEstablishment,
           status: _StageStatus.done,
           detail: trackerInfo.chains.isNotEmpty
               ? '${trackerInfo.chains.last}:${metadata.destinationPort}'
-              : '已建立',
+              : appLocalizations.connected,
         ),
       );
     } else if (status == ActivityStatus.failed) {
       stages.add(
-        const _TimelineStage(
-          name: '连接建立',
+        _TimelineStage(
+          name: appLocalizations.connectionEstablishment,
           status: _StageStatus.fail,
-          detail: '连接失败',
-          error: '超时或连接被拒绝',
+          detail: appLocalizations.connectionFailed,
+          error: appLocalizations.connectionTimeoutOrRefused,
         ),
       );
     }
@@ -439,6 +459,7 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
   }
 
   List<Widget> _buildMetadataItems(BuildContext context) {
+    final appLocalizations = context.appLocalizations;
     final trackerInfo = _trackerInfo;
     final metadata = trackerInfo.metadata;
 
@@ -502,7 +523,7 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 20,
           children: [
-            const Text('代理链'),
+            Text(appLocalizations.proxyChains),
             Flexible(child: chains),
           ],
         ),
@@ -510,30 +531,61 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
     }
 
     return [
-      buildItem(title: '创建时间', desc: trackerInfo.start.showFull),
+      buildItem(
+        title: appLocalizations.creationTime,
+        desc: trackerInfo.start.showFull,
+      ),
       if (getProcessText().isNotEmpty)
-        buildItem(title: '进程', desc: getProcessText()),
-      buildItem(title: '网络类型', desc: metadata.network),
-      buildItem(title: '规则', desc: getRuleText()),
-      if (metadata.host.isNotEmpty) buildItem(title: '主机', desc: metadata.host),
+        buildItem(title: appLocalizations.process, desc: getProcessText()),
+      buildItem(title: appLocalizations.networkType, desc: metadata.network),
+      buildItem(title: appLocalizations.rule, desc: getRuleText()),
+      if (metadata.host.isNotEmpty)
+        buildItem(title: appLocalizations.host, desc: metadata.host),
       if (getSourceText().isNotEmpty)
-        buildItem(title: '来源', desc: getSourceText()),
+        buildItem(title: appLocalizations.source, desc: getSourceText()),
       if (getDestinationText().isNotEmpty)
-        buildItem(title: '目标地址', desc: getDestinationText()),
-      buildItem(title: '上传', desc: trackerInfo.upload.traffic.show),
-      buildItem(title: '下载', desc: trackerInfo.download.traffic.show),
+        buildItem(
+          title: appLocalizations.destination,
+          desc: getDestinationText(),
+        ),
+      buildItem(
+        title: appLocalizations.upload,
+        desc: trackerInfo.upload.traffic.show,
+      ),
+      buildItem(
+        title: appLocalizations.download,
+        desc: trackerInfo.download.traffic.show,
+      ),
       if (metadata.destinationGeoIP.isNotEmpty)
-        buildItem(title: '目标地理定位', desc: metadata.destinationGeoIP.join(' ')),
+        buildItem(
+          title: appLocalizations.destinationGeoIP,
+          desc: metadata.destinationGeoIP.join(' '),
+        ),
       if (metadata.destinationIPASN.isNotEmpty)
-        buildItem(title: '目标IP ASN', desc: metadata.destinationIPASN),
+        buildItem(
+          title: appLocalizations.destinationIPASN,
+          desc: metadata.destinationIPASN,
+        ),
       if (metadata.dnsMode != null)
-        buildItem(title: 'DNS模式', desc: metadata.dnsMode!.name),
+        buildItem(
+          title: appLocalizations.dnsMode,
+          desc: metadata.dnsMode!.name,
+        ),
       if (metadata.specialProxy.isNotEmpty)
-        buildItem(title: '特殊代理', desc: metadata.specialProxy),
+        buildItem(
+          title: appLocalizations.specialProxy,
+          desc: metadata.specialProxy,
+        ),
       if (metadata.specialRules.isNotEmpty)
-        buildItem(title: '特殊规则', desc: metadata.specialRules),
+        buildItem(
+          title: appLocalizations.specialRules,
+          desc: metadata.specialRules,
+        ),
       if (metadata.remoteDestination.isNotEmpty)
-        buildItem(title: '远程目标', desc: metadata.remoteDestination),
+        buildItem(
+          title: appLocalizations.remoteDestination,
+          desc: metadata.remoteDestination,
+        ),
       buildChains(),
     ];
   }
@@ -554,7 +606,7 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
       children: [
         ListItem(
           title: Text(
-            '相关日志',
+            context.appLocalizations.relatedLogs,
             style: context.textTheme.labelLarge?.copyWith(
               color: context.colorScheme.onSurfaceVariant.opacity80,
             ),

@@ -1,3 +1,4 @@
+import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
 import 'package:flutter/material.dart';
 
@@ -13,26 +14,47 @@ class ActivityFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appLocalizations = context.appLocalizations;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         children: [
-          _buildChip(context, null, '全部'),
+          _buildChip(context, null, appLocalizations.activityAll),
           const SizedBox(width: 8),
-          _buildChip(context, ActivityStatus.ongoing, '进行中'),
+          _buildChip(
+            context,
+            ActivityStatus.ongoing,
+            appLocalizations.activityOngoing,
+          ),
           const SizedBox(width: 8),
-          _buildChip(context, ActivityStatus.success, '已连接'),
+          _buildChip(
+            context,
+            ActivityStatus.success,
+            appLocalizations.connected,
+          ),
           const SizedBox(width: 8),
-          _buildChip(context, ActivityStatus.failed, '失败'),
+          _buildChip(
+            context,
+            ActivityStatus.failed,
+            appLocalizations.activityFailed,
+          ),
           const SizedBox(width: 8),
-          _buildChip(context, ActivityStatus.rejected, '已拒绝'),
+          _buildChip(
+            context,
+            ActivityStatus.rejected,
+            appLocalizations.activityRejected,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildChip(BuildContext context, ActivityStatus? status, String label) {
+  Widget _buildChip(
+    BuildContext context,
+    ActivityStatus? status,
+    String label,
+  ) {
     final isActive = currentFilter == status;
     return FilterChip(
       selected: isActive,

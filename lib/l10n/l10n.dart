@@ -104,6 +104,241 @@ class AppLocalizations {
     );
   }
 
+  /// `Clear activity`
+  String get clearActivity {
+    return Intl.message(
+      'Clear activity',
+      name: 'clearActivity',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `No activity`
+  String get activityEmpty {
+    return Intl.message(
+      'No activity',
+      name: 'activityEmpty',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `All`
+  String get activityAll {
+    return Intl.message('All', name: 'activityAll', desc: '', args: []);
+  }
+
+  /// `Ongoing`
+  String get activityOngoing {
+    return Intl.message('Ongoing', name: 'activityOngoing', desc: '', args: []);
+  }
+
+  /// `Failed`
+  String get activityFailed {
+    return Intl.message('Failed', name: 'activityFailed', desc: '', args: []);
+  }
+
+  /// `Rejected`
+  String get activityRejected {
+    return Intl.message(
+      'Rejected',
+      name: 'activityRejected',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Request path`
+  String get requestPath {
+    return Intl.message(
+      'Request path',
+      name: 'requestPath',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Copy diagnostic info`
+  String get copyDiagnosticInfo {
+    return Intl.message(
+      'Copy diagnostic info',
+      name: 'copyDiagnosticInfo',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Copied to clipboard`
+  String get copiedToClipboard {
+    return Intl.message(
+      'Copied to clipboard',
+      name: 'copiedToClipboard',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Request diagnostic info`
+  String get requestDiagnosticInfo {
+    return Intl.message(
+      'Request diagnostic info',
+      name: 'requestDiagnosticInfo',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `DNS trace`
+  String get dnsTrace {
+    return Intl.message('DNS trace', name: 'dnsTrace', desc: '', args: []);
+  }
+
+  /// `No DNS trace data`
+  String get noDnsTraceData {
+    return Intl.message(
+      'No DNS trace data',
+      name: 'noDnsTraceData',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Hit`
+  String get hit {
+    return Intl.message('Hit', name: 'hit', desc: '', args: []);
+  }
+
+  /// `Not hit`
+  String get notHit {
+    return Intl.message('Not hit', name: 'notHit', desc: '', args: []);
+  }
+
+  /// `Intercept`
+  String get intercept {
+    return Intl.message('Intercept', name: 'intercept', desc: '', args: []);
+  }
+
+  /// `Hosts lookup`
+  String get hostsLookup {
+    return Intl.message(
+      'Hosts lookup',
+      name: 'hostsLookup',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `FakeIP allocation`
+  String get fakeIpAllocation {
+    return Intl.message(
+      'FakeIP allocation',
+      name: 'fakeIpAllocation',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `DNS resolution`
+  String get dnsResolve {
+    return Intl.message(
+      'DNS resolution',
+      name: 'dnsResolve',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Cache hit`
+  String get cacheHit {
+    return Intl.message('Cache hit', name: 'cacheHit', desc: '', args: []);
+  }
+
+  /// `Elapsed: {milliseconds} ms`
+  String elapsedMilliseconds(Object milliseconds) {
+    return Intl.message(
+      'Elapsed: $milliseconds ms',
+      name: 'elapsedMilliseconds',
+      desc: '',
+      args: [milliseconds],
+    );
+  }
+
+  /// `DNS resolution failed`
+  String get dnsResolveFailed {
+    return Intl.message(
+      'DNS resolution failed',
+      name: 'dnsResolveFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Rule match`
+  String get ruleMatch {
+    return Intl.message('Rule match', name: 'ruleMatch', desc: '', args: []);
+  }
+
+  /// `Proxy selection`
+  String get proxySelection {
+    return Intl.message(
+      'Proxy selection',
+      name: 'proxySelection',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Rejected by rule`
+  String get rejectedByRule {
+    return Intl.message(
+      'Rejected by rule',
+      name: 'rejectedByRule',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connection establishment`
+  String get connectionEstablishment {
+    return Intl.message(
+      'Connection establishment',
+      name: 'connectionEstablishment',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connection failed`
+  String get connectionFailed {
+    return Intl.message(
+      'Connection failed',
+      name: 'connectionFailed',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Connection timed out or was refused`
+  String get connectionTimeoutOrRefused {
+    return Intl.message(
+      'Connection timed out or was refused',
+      name: 'connectionTimeoutOrRefused',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Related logs`
+  String get relatedLogs {
+    return Intl.message(
+      'Related logs',
+      name: 'relatedLogs',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Tools`
   String get tools {
     return Intl.message('Tools', name: 'tools', desc: '', args: []);
