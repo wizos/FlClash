@@ -58,10 +58,13 @@ class CommonAction extends _$CommonAction {
     final onlyStatisticsProxy = ref.read(
       appSettingProvider.select((state) => state.onlyStatisticsProxy),
     );
-    final traffic = await coreController.getTraffic(onlyStatisticsProxy);
+    final results = await Future.wait([
+      coreController.getTraffic(onlyStatisticsProxy),
+      coreController.getTotalTraffic(onlyStatisticsProxy),
+    ]);
+    final traffic = results[0];
     ref.read(trafficsProvider.notifier).addTraffic(traffic);
-    ref.read(totalTrafficProvider.notifier).value = await coreController
-        .getTotalTraffic(onlyStatisticsProxy);
+    ref.read(totalTrafficProvider.notifier).value = results[1];
   }
 
   Future<void> autoCheckUpdate() async {
@@ -741,7 +744,7 @@ class ProxiesAction extends _$ProxiesAction {
   Future<void> updateGroups() async {
     try {
       commonPrint.log('updateGroups');
-      ref.read(groupsProvider.notifier).value = await retry(
+      final groups = await retry(
         task: () async {
           final sortType = ref.read(
             proxiesStyleSettingProvider.select((state) => state.sortType),
@@ -762,9 +765,25 @@ class ProxiesAction extends _$ProxiesAction {
         },
         retryIf: (res) => res.isEmpty,
       );
+      ref.read(groupsProvider.notifier).value = groups;
+      ref.read(groupNowDataSourceProvider.notifier).replace({
+        for (final group in groups)
+          if (group.now != null) group.name: group.realNow,
+      });
     } catch (e) {
       commonPrint.log('updateGroups error: $e');
       ref.read(groupsProvider.notifier).value = [];
+      ref.read(groupNowDataSourceProvider.notifier).replace({});
+    }
+  }
+
+  Future<void> updateGroupNow() async {
+    try {
+      ref
+          .read(groupNowDataSourceProvider.notifier)
+          .replace(await coreController.getGroupNow());
+    } catch (e) {
+      commonPrint.log('updateGroupNow error: $e');
     }
   }
 

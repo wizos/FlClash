@@ -247,6 +247,51 @@ void main() {
     });
   });
 
+  group('GroupNowDataSource provider', () {
+    test('replaces the current group selection map', () {
+      container.read(groupNowDataSourceProvider.notifier).replace({
+        'auto': 'proxy-a',
+      });
+      expect(container.read(groupNowDataSourceProvider), {'auto': 'proxy-a'});
+    });
+  });
+
+  group('DelayTestingTargets provider', () {
+    test('tracks active targets independently from delay values', () {
+      const target = (
+        profileId: 1,
+        profileUpdatedAt: null,
+        name: 'proxy-a',
+        url: 'https://test.local',
+      );
+      final notifier = container.read(delayTestingTargetsProvider.notifier);
+
+      notifier.start(target);
+      expect(container.read(delayTestingTargetsProvider), contains(target));
+      expect(container.read(delayDataSourceProvider), isEmpty);
+
+      notifier.finish(target);
+      expect(container.read(delayTestingTargetsProvider), isEmpty);
+    });
+  });
+
+  group('DelayDataSource provider', () {
+    test('stores delay by url and proxy name', () {
+      container
+          .read(delayDataSourceProvider.notifier)
+          .setDelay(
+            const Delay(url: 'https://test.local', name: 'proxy-a', value: 123),
+          );
+
+      expect(
+        container.read(
+          delayDataSourceProvider,
+        )['https://test.local']?['proxy-a'],
+        123,
+      );
+    });
+  });
+
   group('TotalTraffic provider', () {
     test('default is empty Traffic', () {
       final t = container.read(totalTrafficProvider);

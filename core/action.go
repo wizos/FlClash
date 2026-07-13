@@ -77,6 +77,9 @@ func handleAction(action *Action, result ActionResult) {
 	case getProxiesMethod:
 		result.success(handleGetProxies())
 		return
+	case getGroupNowMethod:
+		result.success(handleGetGroupNow())
+		return
 	case changeProxyMethod:
 		data := action.Data.(string)
 		handleChangeProxy(data, func(value string) {
@@ -179,6 +182,9 @@ func handleAction(action *Action, result ActionResult) {
 		handleGetMemory(func(value string) {
 			result.success(value)
 		})
+		return
+	case getRuntimeMemoryMethod:
+		result.success(handleGetRuntimeMemory())
 		return
 	case crashMethod:
 		result.success(true)

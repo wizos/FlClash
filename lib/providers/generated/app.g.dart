@@ -144,7 +144,7 @@ final class RequestsProvider
   }
 }
 
-String _$requestsHash() => r'32e4f0141a66b27732f8156a55a6fb23d74cfc07';
+String _$requestsHash() => r'297781dfae0a85864ce6c1561781868cb9d184ac';
 
 abstract class _$Requests extends $Notifier<FixedList<TrackerInfo>> {
   FixedList<TrackerInfo> build();
@@ -1151,6 +1151,112 @@ abstract class _$Groups extends $Notifier<List<Group>> {
   }
 }
 
+@ProviderFor(GroupNowDataSource)
+final groupNowDataSourceProvider = GroupNowDataSourceProvider._();
+
+final class GroupNowDataSourceProvider
+    extends $NotifierProvider<GroupNowDataSource, Map<String, String>> {
+  GroupNowDataSourceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'groupNowDataSourceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$groupNowDataSourceHash();
+
+  @$internal
+  @override
+  GroupNowDataSource create() => GroupNowDataSource();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Map<String, String> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Map<String, String>>(value),
+    );
+  }
+}
+
+String _$groupNowDataSourceHash() =>
+    r'e4abe3992cebb7d705e4793667894287f0ee307c';
+
+abstract class _$GroupNowDataSource extends $Notifier<Map<String, String>> {
+  Map<String, String> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<Map<String, String>, Map<String, String>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<Map<String, String>, Map<String, String>>,
+              Map<String, String>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
+@ProviderFor(DelayTestingTargets)
+final delayTestingTargetsProvider = DelayTestingTargetsProvider._();
+
+final class DelayTestingTargetsProvider
+    extends $NotifierProvider<DelayTestingTargets, Set<DelayTestTarget>> {
+  DelayTestingTargetsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'delayTestingTargetsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$delayTestingTargetsHash();
+
+  @$internal
+  @override
+  DelayTestingTargets create() => DelayTestingTargets();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Set<DelayTestTarget> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Set<DelayTestTarget>>(value),
+    );
+  }
+}
+
+String _$delayTestingTargetsHash() =>
+    r'cf6aa8ca2ababeeafb1643f8202cbdb7d4c3173a';
+
+abstract class _$DelayTestingTargets extends $Notifier<Set<DelayTestTarget>> {
+  Set<DelayTestTarget> build();
+  @$mustCallSuper
+  @override
+  void runBuild() {
+    final ref = this.ref as $Ref<Set<DelayTestTarget>, Set<DelayTestTarget>>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<Set<DelayTestTarget>, Set<DelayTestTarget>>,
+              Set<DelayTestTarget>,
+              Object?,
+              Object?
+            >;
+    element.handleCreate(ref, build);
+  }
+}
+
 @ProviderFor(DelayDataSource)
 final delayDataSourceProvider = DelayDataSourceProvider._();
 
@@ -1183,7 +1289,7 @@ final class DelayDataSourceProvider
   }
 }
 
-String _$delayDataSourceHash() => r'9737cf2d943cb9b5504a5ec8ace20b0a9380b197';
+String _$delayDataSourceHash() => r'ceec8be4a008a23ec22d2ffef4caeaae9a44b36e';
 
 abstract class _$DelayDataSource extends $Notifier<DelayMap> {
   DelayMap build();

@@ -38,22 +38,29 @@ class ProxyCard extends StatelessWidget {
           final delay = ref.watch(
             delayProvider(proxyName: proxy.name, testUrl: testUrl),
           );
+          final isTesting = ref.watch(
+            delayTestingProvider(proxyName: proxy.name, testUrl: testUrl),
+          );
           return FadeThroughBox(
             alignment: type == ProxyCardType.expand
                 ? Alignment.centerLeft
                 : Alignment.centerRight,
-            child: delay == 0 || delay == null
+            child: isTesting
                 ? SizedBox(
                     height: measure.labelSmallHeight,
                     width: measure.labelSmallHeight,
-                    child: delay == 0
-                        ? const CircularProgressIndicator(strokeWidth: 2)
-                        : IconButton(
-                            icon: const Icon(Icons.bolt),
-                            iconSize: globalState.measure.labelSmallHeight,
-                            padding: EdgeInsets.zero,
-                            onPressed: _handleTestCurrentDelay,
-                          ),
+                    child: const CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : delay == 0 || delay == null
+                ? SizedBox(
+                    height: measure.labelSmallHeight,
+                    width: measure.labelSmallHeight,
+                    child: IconButton(
+                      icon: const Icon(Icons.bolt),
+                      iconSize: globalState.measure.labelSmallHeight,
+                      padding: EdgeInsets.zero,
+                      onPressed: _handleTestCurrentDelay,
+                    ),
                   )
                 : GestureDetector(
                     onTap: _handleTestCurrentDelay,

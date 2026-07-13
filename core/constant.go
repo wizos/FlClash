@@ -69,8 +69,8 @@ type ExternalProvider struct {
 }
 
 type ProxiesData struct {
-	Proxies map[string]constant.Proxy `json:"proxies"`
-	All     []string                  `json:"all"`
+	Proxies map[string]any `json:"proxies"`
+	All     []string       `json:"all"`
 }
 
 const (
@@ -82,6 +82,7 @@ const (
 	validateConfigMethod           Method = "validateConfig"
 	updateConfigMethod             Method = "updateConfig"
 	getProxiesMethod               Method = "getProxies"
+	getGroupNowMethod              Method = "getGroupNow"
 	changeProxyMethod              Method = "changeProxy"
 	getTrafficMethod               Method = "getTraffic"
 	getTotalTrafficMethod          Method = "getTotalTraffic"
@@ -95,6 +96,7 @@ const (
 	getExternalProviderMethod      Method = "getExternalProvider"
 	getCountryCodeMethod           Method = "getCountryCode"
 	getMemoryMethod                Method = "getMemory"
+	getRuntimeMemoryMethod         Method = "getRuntimeMemory"
 	updateGeoDataMethod            Method = "updateGeoData"
 	updateExternalProviderMethod   Method = "updateExternalProvider"
 	sideLoadExternalProviderMethod Method = "sideLoadExternalProvider"

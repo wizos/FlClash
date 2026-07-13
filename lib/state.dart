@@ -70,10 +70,12 @@ class GlobalState {
   BuildContext get _context => navigatorKey.currentContext!;
 
   Future<ProviderContainer> _initData(int version) async {
+    final delayMap = await preferences.getDelayMap();
     final appState = AppState(
       brightness: WidgetsBinding.instance.platformDispatcher.platformBrightness,
       version: version,
       viewSize: Size.zero,
+      delayMap: delayMap,
       requests: FixedList(maxLength),
       logs: FixedList(maxLength),
       traffics: FixedList(30),

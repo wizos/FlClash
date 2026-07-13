@@ -34,7 +34,7 @@ class CoreService extends CoreHandlerInterface {
   }
 
   Future<void> handleResult(ActionResult result) async {
-    final completer = _callbackCompleterMap[result.id];
+    final completer = _callbackCompleterMap.remove(result.id);
     final data = await parasResult(result);
     if (result.id?.isEmpty == true) {
       coreEventManager.sendEvent(CoreEvent.fromJson(result.data));

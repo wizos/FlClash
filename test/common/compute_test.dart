@@ -132,6 +132,48 @@ void main() {
       );
       expect(state.proxyName, 'proxy-b');
     });
+
+    test('live group now overrides the group snapshot', () {
+      final groups = [
+        const Group(
+          name: 'auto',
+          type: GroupType.URLTest,
+          now: 'proxy-old',
+          all: [
+            Proxy(name: 'proxy-old', type: 'ss'),
+            Proxy(name: 'proxy-new', type: 'ss'),
+          ],
+        ),
+      ];
+      final state = computeRealSelectedProxyState(
+        'auto',
+        groups: groups,
+        selectedMap: {},
+        groupNowMap: {'auto': 'proxy-new'},
+      );
+      expect(state.proxyName, 'proxy-new');
+    });
+
+    test('stops safely when groups contain a cycle', () {
+      final groups = [
+        const Group(
+          name: 'group-a',
+          type: GroupType.Selector,
+          all: [Proxy(name: 'group-b', type: 'select')],
+        ),
+        const Group(
+          name: 'group-b',
+          type: GroupType.Selector,
+          all: [Proxy(name: 'group-a', type: 'select')],
+        ),
+      ];
+      final state = computeRealSelectedProxyState(
+        'group-a',
+        groups: groups,
+        selectedMap: {'group-a': 'group-b', 'group-b': 'group-a'},
+      );
+      expect(state.proxyName, isEmpty);
+    });
   });
 
   group('computeProxyDelayState', () {

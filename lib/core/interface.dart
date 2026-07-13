@@ -28,6 +28,8 @@ mixin CoreInterface {
 
   Future<ProxiesData> getProxies();
 
+  Future<Map<String, String>> getGroupNow();
+
   Future<String> changeProxy(ChangeProxyParams changeProxyParams);
 
   Future<bool> startListener();
@@ -54,6 +56,8 @@ mixin CoreInterface {
   FutureOr<String> getCountryCode(String ip);
 
   FutureOr<String> getMemory();
+
+  FutureOr<String> getRuntimeMemory();
 
   FutureOr<void> resetTraffic();
 
@@ -187,6 +191,15 @@ abstract class CoreHandlerInterface with CoreInterface {
     return data != null
         ? ProxiesData.fromJson(data)
         : const ProxiesData(proxies: {}, all: []);
+  }
+
+  @override
+  Future<Map<String, String>> getGroupNow() async {
+    final data = await _invoke<Map<String, dynamic>>(
+      method: ActionMethod.getGroupNow,
+    );
+    return data?.map((key, value) => MapEntry(key, value?.toString() ?? '')) ??
+        {};
   }
 
   @override
@@ -343,5 +356,10 @@ abstract class CoreHandlerInterface with CoreInterface {
   @override
   Future<String> getMemory() async {
     return await _invoke<String>(method: ActionMethod.getMemory) ?? '';
+  }
+
+  @override
+  Future<String> getRuntimeMemory() async {
+    return await _invoke<String>(method: ActionMethod.getRuntimeMemory) ?? '';
   }
 }

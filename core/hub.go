@@ -105,11 +105,18 @@ func handleGetProxies() ProxiesData {
 
 	nameList := config.GetProxyNameList()
 
-	proxies := tunnel.AllProxies()
+	proxies := tunnel.Proxies()
 
 	hasGlobal := false
 
 	allNames := make([]string, 0, len(nameList)+1)
+	proxiesData := make(map[string]any, len(proxies))
+
+	addGroup := func(name string, proxy constant.Proxy) {
+		allNames = append(allNames, name)
+		proxiesData[name] = getProxySummary(proxy)
+		addGroupProxySummaries(proxy, proxiesData)
+	}
 
 	for _, name := range nameList {
 		if name == "GLOBAL" {
@@ -121,8 +128,8 @@ func handleGetProxies() ProxiesData {
 			continue
 		}
 		switch p.Type() {
-		case constant.Selector, constant.URLTest, constant.Fallback, constant.Relay, constant.LoadBalance:
-			allNames = append(allNames, name)
+		case constant.Selector, constant.URLTest, constant.Fallback, constant.LoadBalance:
+			addGroup(name, p)
 		default:
 		}
 	}
@@ -130,12 +137,65 @@ func handleGetProxies() ProxiesData {
 	if !hasGlobal {
 		if p, ok := proxies["GLOBAL"]; ok && p != nil {
 			allNames = append([]string{"GLOBAL"}, allNames...)
+			proxiesData["GLOBAL"] = getProxySummary(p)
+			addGroupProxySummaries(p, proxiesData)
 		}
 	}
 
 	return ProxiesData{
 		All:     allNames,
-		Proxies: proxies,
+		Proxies: proxiesData,
+	}
+}
+
+func handleGetGroupNow() map[string]string {
+	proxyLock.RLock()
+	defer proxyLock.RUnlock()
+
+	groupNow := make(map[string]string)
+	for name, proxy := range tunnel.Proxies() {
+		if proxy == nil {
+			continue
+		}
+		switch proxy.Type() {
+		case constant.URLTest, constant.Fallback:
+			group, ok := proxy.Adapter().(outboundgroup.ProxyGroup)
+			if ok {
+				groupNow[name] = group.Now()
+			}
+		}
+	}
+	return groupNow
+}
+
+func getProxySummary(proxy constant.Proxy) map[string]any {
+	summary := map[string]any{
+		"name": proxy.Name(),
+		"type": proxy.Type().String(),
+	}
+	switch proxy.Type() {
+	case constant.Selector, constant.URLTest, constant.Fallback, constant.Relay, constant.LoadBalance:
+		if data, err := proxy.Adapter().MarshalJSON(); err == nil {
+			_ = json.Unmarshal(data, &summary)
+			summary["name"] = proxy.Name()
+			summary["type"] = proxy.Type().String()
+		}
+	}
+	return summary
+}
+
+func addGroupProxySummaries(proxy constant.Proxy, proxiesData map[string]any) {
+	group, ok := proxy.Adapter().(outboundgroup.ProxyGroup)
+	if !ok {
+		return
+	}
+	for _, child := range group.Proxies() {
+		if child == nil {
+			continue
+		}
+		if _, ok := proxiesData[child.Name()]; !ok {
+			proxiesData[child.Name()] = getProxySummary(child)
+		}
 	}
 }
 
@@ -213,18 +273,21 @@ func handleResetTraffic() {
 }
 
 func handleAsyncTestDelay(paramsString string, fn func(string)) {
-	mBatch.Go(paramsString, func() (bool, error) {
+	go func() {
+		testDelaySemaphore <- struct{}{}
+		defer func() { <-testDelaySemaphore }()
+
 		var params = &TestDelayParams{}
 		err := json.Unmarshal([]byte(paramsString), params)
 		if err != nil {
 			fn("")
-			return false, nil
+			return
 		}
 
 		expectedStatus, err := utils.NewUnsignedRanges[uint16]("")
 		if err != nil {
 			fn("")
-			return false, nil
+			return
 		}
 
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(params.Timeout))
@@ -241,8 +304,9 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 			delayData.Value = -1
 			data, _ := json.Marshal(delayData)
 			fn(string(data))
-			return false, nil
+			return
 		}
+		defer resetURLTestFastNodes()
 
 		testUrl := constant.DefaultTestURL
 
@@ -255,14 +319,25 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 			delayData.Value = -1
 			data, _ := json.Marshal(delayData)
 			fn(string(data))
-			return false, nil
+			return
 		}
 
 		delayData.Value = int32(delay)
 		data, _ := json.Marshal(delayData)
 		fn(string(data))
-		return false, nil
-	})
+	}()
+}
+
+func resetURLTestFastNodes() {
+	for _, proxy := range tunnel.Proxies() {
+		if proxy == nil {
+			continue
+		}
+		urlTest, ok := proxy.Adapter().(interface{ ResetFastNode() })
+		if ok {
+			urlTest.ResetFastNode()
+		}
+	}
 }
 
 func handleGetConnections() string {
@@ -459,6 +534,31 @@ func handleGetMemory(fn func(value string)) {
 	go func() {
 		fn(strconv.FormatUint(statistic.DefaultManager.Memory(), 10))
 	}()
+}
+
+func handleGetRuntimeMemory() string {
+	var stats runtime.MemStats
+	runtime.ReadMemStats(&stats)
+	data, err := json.Marshal(map[string]uint64{
+		"rss":          statistic.DefaultManager.Memory(),
+		"alloc":        stats.Alloc,
+		"heapAlloc":    stats.HeapAlloc,
+		"heapSys":      stats.HeapSys,
+		"heapIdle":     stats.HeapIdle,
+		"heapInuse":    stats.HeapInuse,
+		"heapReleased": stats.HeapReleased,
+		"heapObjects":  stats.HeapObjects,
+		"stackInuse":   stats.StackInuse,
+		"mSpanInuse":   stats.MSpanInuse,
+		"mCacheInuse":  stats.MCacheInuse,
+		"nextGC":       stats.NextGC,
+		"numGC":        uint64(stats.NumGC),
+	})
+	if err != nil {
+		logError("Error: %s", err)
+		return ""
+	}
+	return string(data)
 }
 
 func handleGetConfig(path string) (*config.RawConfig, error) {

@@ -5,6 +5,13 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'generated/core.freezed.dart';
 part 'generated/core.g.dart';
 
+typedef DelayTestTarget = ({
+  int? profileId,
+  DateTime? profileUpdatedAt,
+  String name,
+  String url,
+});
+
 @freezed
 abstract class SetupParams with _$SetupParams {
   const factory SetupParams({

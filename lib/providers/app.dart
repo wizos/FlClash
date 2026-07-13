@@ -56,6 +56,10 @@ class Requests extends _$Requests with AutoDisposeNotifierMixin {
   void addRequest(TrackerInfo value) {
     this.value = state.copyWith()..add(value);
   }
+
+  void clear() {
+    value = state.copyWith()..clear();
+  }
 }
 
 @Riverpod(keepAlive: true)
@@ -249,6 +253,42 @@ class Groups extends _$Groups with AutoDisposeNotifierMixin {
 }
 
 @Riverpod(keepAlive: true)
+class GroupNowDataSource extends _$GroupNowDataSource
+    with AutoDisposeNotifierMixin {
+  @override
+  Map<String, String> build() {
+    return {};
+  }
+
+  void replace(Map<String, String> groupNow) {
+    if (!stringAndStringMapEquality.equals(state, groupNow)) {
+      value = Map<String, String>.from(groupNow);
+    }
+  }
+}
+
+@Riverpod(keepAlive: true)
+class DelayTestingTargets extends _$DelayTestingTargets
+    with AutoDisposeNotifierMixin {
+  @override
+  Set<DelayTestTarget> build() {
+    return {};
+  }
+
+  void start(DelayTestTarget target) {
+    if (!state.contains(target)) {
+      value = {...state, target};
+    }
+  }
+
+  void finish(DelayTestTarget target) {
+    if (state.contains(target)) {
+      value = {...state}..remove(target);
+    }
+  }
+}
+
+@Riverpod(keepAlive: true)
 class DelayDataSource extends _$DelayDataSource with AutoDisposeNotifierMixin {
   @override
   DelayMap build() {
@@ -263,6 +303,15 @@ class DelayDataSource extends _$DelayDataSource with AutoDisposeNotifierMixin {
       }
       newDelayMap[delay.url]![delay.name] = delay.value;
       value = newDelayMap;
+      if (delay.value != 0) {
+        final delayMapToSave = newDelayMap;
+        debouncer.call(FunctionTag.saveDelayMap, () {
+          final savedDelayMap = delayMapToSave.map(
+            (url, delays) => MapEntry(url, Map<String, int?>.from(delays)),
+          );
+          preferences.saveDelayMap(savedDelayMap);
+        }, duration: const Duration(seconds: 1));
+      }
     }
   }
 }

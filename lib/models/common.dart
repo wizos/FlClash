@@ -48,13 +48,14 @@ extension PackagesExt on List<Package> {
     required bool isFilterSystemApp,
     required bool isFilterNonInternetApp,
   }) {
+    final pinedSet = pinedList.toSet();
     return where(
       (item) =>
           (isFilterSystemApp ? item.system == false : true) &&
           (isFilterNonInternetApp ? item.internet == true : true),
     ).sorted((a, b) {
-      final isSelectA = pinedList.contains(a.packageName);
-      final isSelectB = pinedList.contains(b.packageName);
+      final isSelectA = pinedSet.contains(a.packageName);
+      final isSelectB = pinedSet.contains(b.packageName);
 
       if (isSelectA != isSelectB) {
         return isSelectA ? -1 : 1;
@@ -103,15 +104,21 @@ DnsTrace? _dnsTraceFromJson(dynamic json) {
 
 dynamic _dnsTraceToJson(DnsTrace? trace) {
   if (trace == null) return null;
-  return {'stages': trace.stages.map((s) => {
-    'name': s.name,
-    'matched': s.matched,
-    'server': s.server,
-    'policyKey': s.policyKey,
-    'cacheHit': s.cacheHit,
-    'duration': s.duration,
-    'error': s.error,
-  }).toList()};
+  return {
+    'stages': trace.stages
+        .map(
+          (s) => {
+            'name': s.name,
+            'matched': s.matched,
+            'server': s.server,
+            'policyKey': s.policyKey,
+            'cacheHit': s.cacheHit,
+            'duration': s.duration,
+            'error': s.error,
+          },
+        )
+        .toList(),
+  };
 }
 
 @freezed
@@ -127,7 +134,8 @@ abstract class TrackerInfo with _$TrackerInfo {
     required String rulePayload,
     int? downloadSpeed,
     int? uploadSpeed,
-    @JsonKey(fromJson: _dnsTraceFromJson, toJson: _dnsTraceToJson) DnsTrace? dnsTrace,
+    @JsonKey(fromJson: _dnsTraceFromJson, toJson: _dnsTraceToJson)
+    DnsTrace? dnsTrace,
   }) = _TrackerInfo;
 
   factory TrackerInfo.fromJson(Map<String, Object?> json) =>

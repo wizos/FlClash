@@ -20,20 +20,11 @@ GroupsState currentGroupsState(Ref ref) {
   final mode = ref.watch(
     patchClashConfigProvider.select((state) => state.mode),
   );
-  final groups = ref.watch(
-    groupsProvider.select(
-      (state) => state.map((item) {
-        return item.copyWith(
-          now: '',
-          all: item.all.map((proxy) => proxy.copyWith(now: '')).toList(),
-        );
-      }),
-    ),
-  );
+  final groups = ref.watch(groupsProvider);
   return GroupsState(
     value: switch (mode) {
       Mode.direct => [],
-      Mode.global => groups.toList(),
+      Mode.global => groups,
       Mode.rule =>
         groups
             .where((item) => item.hidden == false)
@@ -470,10 +461,12 @@ int proxiesColumns(Ref ref) {
 SelectedProxyState realSelectedProxyState(Ref ref, String proxyName) {
   final groups = ref.watch(groupsProvider);
   final selectedMap = ref.watch(selectedMapProvider);
+  final groupNowMap = ref.watch(groupNowDataSourceProvider);
   return computeRealSelectedProxyState(
     proxyName,
     groups: groups,
     selectedMap: selectedMap,
+    groupNowMap: groupNowMap,
   );
 }
 
@@ -488,10 +481,32 @@ String? proxyName(Ref ref, String groupName) {
 @riverpod
 String? selectedProxyName(Ref ref, String groupName) {
   final proxyName = ref.watch(proxyNameProvider(groupName));
+  final groupNow = ref.watch(
+    groupNowDataSourceProvider.select((state) => state[groupName]),
+  );
   final group = ref.watch(
     groupsProvider.select((state) => state.getGroup(groupName)),
   );
+  if (group?.type.isComputedSelected == true && groupNow?.isNotEmpty == true) {
+    return groupNow;
+  }
   return group?.getCurrentSelectedName(proxyName ?? '');
+}
+
+@riverpod
+bool delayTesting(Ref ref, {required String proxyName, String? testUrl}) {
+  final currentTestUrl = ref.watch(realTestUrlProvider(testUrl));
+  final proxyState = ref.watch(realSelectedProxyStateProvider(proxyName));
+  final profile = ref.watch(currentProfileProvider);
+  final target = (
+    profileId: profile?.id,
+    profileUpdatedAt: profile?.lastUpdateDate,
+    name: proxyState.proxyName,
+    url: proxyState.testUrl.takeFirstValid([currentTestUrl]),
+  );
+  return ref.watch(
+    delayTestingTargetsProvider.select((state) => state.contains(target)),
+  );
 }
 
 @riverpod

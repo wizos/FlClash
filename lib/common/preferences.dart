@@ -85,6 +85,38 @@ class Preferences {
     return preferences?.setString(configKey, json.encode(config)) ?? false;
   }
 
+  Future<DelayMap> getDelayMap() async {
+    try {
+      final preferences = await sharedPreferencesCompleter.future;
+      final delayMapString = preferences?.getString(delayMapKey);
+      if (delayMapString == null) return {};
+      final data = json.decode(delayMapString) as Map<String, dynamic>;
+      return data.map(
+        (url, value) => MapEntry(
+          url,
+          (value as Map<String, dynamic>).map(
+            (name, delay) => MapEntry(name, delay as int?),
+          ),
+        ),
+      );
+    } catch (_) {
+      return {};
+    }
+  }
+
+  Future<bool> saveDelayMap(DelayMap delayMap) async {
+    final preferences = await sharedPreferencesCompleter.future;
+    final storableDelayMap = delayMap.map((url, delays) {
+      return MapEntry(
+        url,
+        Map<String, int?>.from(delays)
+          ..removeWhere((_, delay) => delay == null || delay == 0),
+      );
+    })..removeWhere((_, delays) => delays.isEmpty);
+    return preferences?.setString(delayMapKey, json.encode(storableDelayMap)) ??
+        false;
+  }
+
   Future<void> clearPreferences() async {
     final sharedPreferencesIns = await sharedPreferencesCompleter.future;
     await sharedPreferencesIns?.clear();

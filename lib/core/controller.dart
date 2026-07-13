@@ -13,6 +13,7 @@ import 'package:path/path.dart';
 
 class CoreController {
   static CoreController? _instance;
+  static const _startupGeoFileNameList = [MMDB, GEOSITE];
   late CoreHandlerInterface _interface;
 
   CoreController._internal() {
@@ -43,15 +44,18 @@ class CoreController {
   }
 
   static Future<void> initGeo() async {
+    await ensureGeoData(_startupGeoFileNameList);
+  }
+
+  static Future<void> ensureGeoData(Iterable<String> geoFileNameList) async {
     final homePath = await appPath.homeDirPath;
     final homeDir = Directory(homePath);
     final isExists = await homeDir.exists();
     if (!isExists) {
       await homeDir.create(recursive: true);
     }
-    const geoFileNameList = [MMDB, GEOIP, GEOSITE, ASN];
     try {
-      for (final geoFileName in geoFileNameList) {
+      for (final geoFileName in geoFileNameList.toSet()) {
         final geoFile = File(join(homePath, geoFileName));
         final isExists = await geoFile.exists();
         if (isExists) {
@@ -59,7 +63,7 @@ class CoreController {
         }
         final data = await rootBundle.load('assets/data/$geoFileName');
         final List<int> bytes = data.buffer.asUint8List();
-        await geoFile.writeAsBytes(bytes, flush: true);
+        await geoFile.writeAsBytes(bytes);
       }
     } catch (e) {
       commonPrint.log(
@@ -68,6 +72,31 @@ class CoreController {
       );
       rethrow;
     }
+  }
+
+  @visibleForTesting
+  static Set<String> geoFileNamesForConfig(String config) {
+    final geoFileNames = <String>{..._startupGeoFileNameList};
+    final geodataModePattern = RegExp(
+      r'^\s*geodata-mode\s*:\s*true\s*(?:#.*)?$',
+      multiLine: true,
+      caseSensitive: false,
+    );
+    if (geodataModePattern.hasMatch(config)) {
+      geoFileNames.add(GEOIP);
+    }
+    final ipAsnRulePattern = RegExp(
+      r'(^|[\s,\-])(?:SRC-)?IP-ASN\s*,',
+      caseSensitive: false,
+    );
+    if (ipAsnRulePattern.hasMatch(config)) {
+      geoFileNames.add(ASN);
+    }
+    return geoFileNames;
+  }
+
+  static Future<void> ensureGeoDataForConfig(String config) {
+    return ensureGeoData(geoFileNamesForConfig(config));
   }
 
   Future<bool> init(int version) async {
@@ -83,6 +112,10 @@ class CoreController {
   FutureOr<bool> get isInit => _interface.isInit;
 
   Future<String> validateConfig(String path) async {
+    final configFile = File(path);
+    if (await configFile.exists()) {
+      await ensureGeoDataForConfig(await configFile.readAsString());
+    }
     final res = await _interface.validateConfig(path);
     return res;
   }
@@ -91,9 +124,12 @@ class CoreController {
     final path = await appPath.tempFilePath;
     final file = File(path);
     await file.safeWriteAsString(data);
-    final res = await _interface.validateConfig(path);
-    await File(path).safeDelete();
-    return res;
+    try {
+      await ensureGeoDataForConfig(data);
+      return _interface.validateConfig(path);
+    } finally {
+      await File(path).safeDelete();
+    }
   }
 
   Future<String> updateConfig(UpdateParams updateParams) async {
@@ -105,6 +141,10 @@ class CoreController {
     required SetupState setupState,
     VoidCallback? preloadInvoke,
   }) async {
+    final configFile = File(await appPath.configFilePath);
+    if (await configFile.exists()) {
+      await ensureGeoDataForConfig(await configFile.readAsString());
+    }
     final res = _interface.setupConfig(params);
     if (preloadInvoke != null) {
       preloadInvoke();
@@ -128,6 +168,10 @@ class CoreController {
         defaultTestUrl: defaultTestUrl,
       ),
     );
+  }
+
+  Future<Map<String, String>> getGroupNow() {
+    return _interface.getGroupNow();
   }
 
   FutureOr<String> changeProxy(ChangeProxyParams changeProxyParams) async {
@@ -253,6 +297,16 @@ class CoreController {
       return 0;
     }
     return int.parse(value);
+  }
+
+  Future<Map<String, int>> getRuntimeMemory() async {
+    final value = await _interface.getRuntimeMemory();
+    if (value.isEmpty) {
+      return {};
+    }
+    return (json.decode(value) as Map).map(
+      (key, value) => MapEntry(key.toString(), (value as num).toInt()),
+    );
   }
 
   void resetTraffic() {

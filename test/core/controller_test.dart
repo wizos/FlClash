@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:fl_clash/common/constant.dart';
 import 'package:fl_clash/core/controller.dart';
 import 'package:fl_clash/core/interface.dart';
 import 'package:fl_clash/enum/enum.dart';
@@ -90,6 +91,27 @@ void main() {
   });
 
   group('config methods', () {
+    test('geoFileNamesForConfig keeps offline startup baseline', () {
+      final names = CoreController.geoFileNamesForConfig('rules: []');
+      expect(names, containsAll([MMDB, GEOSITE]));
+      expect(names, isNot(contains(GEOIP)));
+      expect(names, isNot(contains(ASN)));
+    });
+
+    test('geoFileNamesForConfig includes GeoIP.dat for geodata mode', () {
+      final names = CoreController.geoFileNamesForConfig(
+        'geodata-mode: true\nrules:\n  - GEOIP,CN,DIRECT',
+      );
+      expect(names, containsAll([MMDB, GEOSITE, GEOIP]));
+    });
+
+    test('geoFileNamesForConfig includes ASN database for IP-ASN rules', () {
+      final names = CoreController.geoFileNamesForConfig(
+        'rules:\n  - IP-ASN,13335,PROXY\n  - SRC-IP-ASN,1,DIRECT',
+      );
+      expect(names, containsAll([MMDB, GEOSITE, ASN]));
+    });
+
     test('validateConfig delegates to interface', () async {
       when(() => mock.validateConfig('/path')).thenAnswer((_) async => 'ok');
       final result = await controller.validateConfig('/path');
@@ -231,6 +253,14 @@ void main() {
       final result = await controller.getDelay('test.com', 'P1');
       expect(result.name, 'P1');
       expect(result.value, 100);
+    });
+
+    test('getGroupNow delegates to the interface', () async {
+      when(
+        () => mock.getGroupNow(),
+      ).thenAnswer((_) async => {'auto': 'proxy-a'});
+      expect(await controller.getGroupNow(), {'auto': 'proxy-a'});
+      verify(() => mock.getGroupNow()).called(1);
     });
 
     test('startListener delegates', () async {

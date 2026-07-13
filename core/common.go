@@ -2,7 +2,6 @@ package main
 
 import (
 	b "bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +15,6 @@ import (
 	"github.com/metacubex/mihomo/adapter/inbound"
 	"github.com/metacubex/mihomo/adapter/outboundgroup"
 	"github.com/metacubex/mihomo/adapter/provider"
-	"github.com/metacubex/mihomo/common/batch"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/resolver"
 	"github.com/metacubex/mihomo/component/updater"
@@ -34,16 +32,16 @@ import (
 )
 
 var (
-	currentConfig *config.Config
-	version       = 0
-	isRunning     atomic.Bool
-	configLock  sync.RWMutex // protects config-related operations (init, apply, update)
-	proxyLock   sync.RWMutex // protects proxy query/change
-	connLock    sync.RWMutex // protects connection management
-	providerLock sync.RWMutex // protects provider operations
-	geoLock     sync.Mutex   // protects geoip query
-	mBatch, _     = batch.New[bool](context.Background(), batch.WithConcurrencyNum[bool](50))
-	debugError    = false
+	currentConfig      *config.Config
+	version            = 0
+	isRunning          atomic.Bool
+	configLock         sync.RWMutex // protects config-related operations (init, apply, update)
+	proxyLock          sync.RWMutex // protects proxy query/change
+	connLock           sync.RWMutex // protects connection management
+	providerLock       sync.RWMutex // protects provider operations
+	geoLock            sync.Mutex   // protects geoip query
+	testDelaySemaphore = make(chan struct{}, 50)
+	debugError         = false
 )
 
 func getExternalProvidersRaw() map[string]cp.Provider {

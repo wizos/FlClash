@@ -55,6 +55,7 @@ const profilesDirectoryName = 'profiles';
 const localhost = '127.0.0.1';
 const clashConfigKey = 'clash_config';
 const configKey = 'config';
+const delayMapKey = 'delay_map';
 const double dialogCommonWidth = 300;
 const repository = 'chen08209/FlClash';
 const defaultExternalController = '127.0.0.1:9090';
