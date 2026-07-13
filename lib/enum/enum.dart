@@ -97,6 +97,8 @@ enum ViewMode { mobile, laptop, desktop }
 
 enum LogLevel { debug, info, warning, error, silent }
 
+enum ActivityStatus { ongoing, success, failed, rejected }
+
 extension LogLevelExt on LogLevel {
   Color? color(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -369,6 +371,7 @@ enum PageLabel {
   dashboard,
   proxies,
   profiles,
+  activity,
   tools,
   logs,
   requests,
@@ -507,7 +510,7 @@ enum RuleTarget {
 
 enum RestoreStrategy { compatible, override }
 
-enum CacheTag { logs, rules, requests, proxiesList }
+enum CacheTag { logs, rules, requests, proxiesList, activity }
 
 enum Language { yaml, javaScript, json }
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:collection/collection.dart';
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/enum/enum.dart';
+import 'package:fl_clash/models/activity.dart';
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -87,10 +88,30 @@ abstract class Metadata with _$Metadata {
     @Default('') String sourceIPASN,
     @Default('') String specialRules,
     @Default('') String specialProxy,
+    @Default(false) bool hostsMatched,
   }) = _Metadata;
 
   factory Metadata.fromJson(Map<String, Object?> json) =>
       _$MetadataFromJson(json);
+}
+
+DnsTrace? _dnsTraceFromJson(dynamic json) {
+  if (json == null) return null;
+  if (json is Map<String, dynamic>) return DnsTrace.fromJson(json);
+  return null;
+}
+
+dynamic _dnsTraceToJson(DnsTrace? trace) {
+  if (trace == null) return null;
+  return {'stages': trace.stages.map((s) => {
+    'name': s.name,
+    'matched': s.matched,
+    'server': s.server,
+    'policyKey': s.policyKey,
+    'cacheHit': s.cacheHit,
+    'duration': s.duration,
+    'error': s.error,
+  }).toList()};
 }
 
 @freezed
@@ -106,6 +127,7 @@ abstract class TrackerInfo with _$TrackerInfo {
     required String rulePayload,
     int? downloadSpeed,
     int? uploadSpeed,
+    @JsonKey(fromJson: _dnsTraceFromJson, toJson: _dnsTraceToJson) DnsTrace? dnsTrace,
   }) = _TrackerInfo;
 
   factory TrackerInfo.fromJson(Map<String, Object?> json) =>

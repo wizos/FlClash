@@ -48,6 +48,7 @@ _Metadata _$MetadataFromJson(Map<String, dynamic> json) => _Metadata(
   sourceIPASN: json['sourceIPASN'] as String? ?? '',
   specialRules: json['specialRules'] as String? ?? '',
   specialProxy: json['specialProxy'] as String? ?? '',
+  hostsMatched: json['hostsMatched'] as bool? ?? false,
 );
 
 Map<String, dynamic> _$MetadataToJson(_Metadata instance) => <String, dynamic>{
@@ -68,6 +69,7 @@ Map<String, dynamic> _$MetadataToJson(_Metadata instance) => <String, dynamic>{
   'sourceIPASN': instance.sourceIPASN,
   'specialRules': instance.specialRules,
   'specialProxy': instance.specialProxy,
+  'hostsMatched': instance.hostsMatched,
 };
 
 const _$DnsModeEnumMap = {
@@ -88,6 +90,7 @@ _TrackerInfo _$TrackerInfoFromJson(Map<String, dynamic> json) => _TrackerInfo(
   rulePayload: json['rulePayload'] as String,
   downloadSpeed: (json['downloadSpeed'] as num?)?.toInt(),
   uploadSpeed: (json['uploadSpeed'] as num?)?.toInt(),
+  dnsTrace: _dnsTraceFromJson(json['dnsTrace']),
 );
 
 Map<String, dynamic> _$TrackerInfoToJson(_TrackerInfo instance) =>
@@ -102,6 +105,7 @@ Map<String, dynamic> _$TrackerInfoToJson(_TrackerInfo instance) =>
       'rulePayload': instance.rulePayload,
       'downloadSpeed': instance.downloadSpeed,
       'uploadSpeed': instance.uploadSpeed,
+      'dnsTrace': _dnsTraceToJson(instance.dnsTrace),
     };
 
 _Log _$LogFromJson(Map<String, dynamic> json) => _Log(
