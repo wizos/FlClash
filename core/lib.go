@@ -37,8 +37,8 @@ type TunHandler struct {
 }
 
 func (th *TunHandler) start(fd int, stack, address, dns string) {
-	runLock.Lock()
-	defer runLock.Unlock()
+	configLock.Lock()
+	defer configLock.Unlock()
 	_ = th.limit.Acquire(context.TODO(), 4)
 	defer th.limit.Release(4)
 	th.initHook()
@@ -201,7 +201,7 @@ func invokeAction(callback unsafe.Pointer, paramsChar *C.char) {
 //export startTUN
 func startTUN(callback unsafe.Pointer, fd C.int, stackChar, addressChar, dnsChar *C.char) bool {
 	handleStartTun(callback, int(fd), takeCString(stackChar), takeCString(addressChar), takeCString(dnsChar))
-	if !isRunning {
+	if !isRunning.Load() {
 		handleStartListener()
 	} else {
 		handleResetConnections()
@@ -218,7 +218,7 @@ func quickSetup(callback unsafe.Pointer, initParamsChar *C.char, setupParamsChar
 			invokeResult(callback, "init failed")
 			return
 		}
-		isRunning = true
+		isRunning.Store(true)
 		message := handleSetupConfig([]byte(setupParamsString))
 		invokeResult(callback, message)
 	}()
@@ -234,16 +234,17 @@ func setEventListener(listener unsafe.Pointer) {
 
 //export getTotalTraffic
 func getTotalTraffic(onlyStatisticsProxy bool) *C.char {
-	data := C.CString(handleGetTotalTraffic(onlyStatisticsProxy))
-	defer C.free(unsafe.Pointer(data))
-	return data
+	return C.CString(handleGetTotalTraffic(onlyStatisticsProxy))
 }
 
 //export getTraffic
 func getTraffic(onlyStatisticsProxy bool) *C.char {
-	data := C.CString(handleGetTraffic(onlyStatisticsProxy))
-	defer C.free(unsafe.Pointer(data))
-	return data
+	return C.CString(handleGetTraffic(onlyStatisticsProxy))
+}
+
+//export freeCString
+func freeCString(s *C.char) {
+	C.free(unsafe.Pointer(s))
 }
 
 func sendMessage(message Message) {
@@ -261,7 +262,7 @@ func sendMessage(message Message) {
 //export stopTun
 func stopTun() {
 	handleStopTun()
-	if isRunning {
+	if isRunning.Load() {
 		handleStopListener()
 	}
 }

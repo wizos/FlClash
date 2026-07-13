@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sync"
+	"sync/atomic"
 
 	"github.com/metacubex/mihomo/adapter"
 	"github.com/metacubex/mihomo/adapter/inbound"
@@ -35,8 +36,12 @@ import (
 var (
 	currentConfig *config.Config
 	version       = 0
-	isRunning     = false
-	runLock       sync.Mutex
+	isRunning     atomic.Bool
+	configLock  sync.RWMutex // protects config-related operations (init, apply, update)
+	proxyLock   sync.RWMutex // protects proxy query/change
+	connLock    sync.RWMutex // protects connection management
+	providerLock sync.RWMutex // protects provider operations
+	geoLock     sync.Mutex   // protects geoip query
 	mBatch, _     = batch.New[bool](context.Background(), batch.WithConcurrencyNum[bool](50))
 	debugError    = false
 )
@@ -89,24 +94,18 @@ func sideUpdateExternalProvider(p cp.Provider, bytes []byte) error {
 	case *provider.ProxySetProvider:
 		psp := p.(*provider.ProxySetProvider)
 		_, _, err := psp.SideUpdate(bytes)
-		if err == nil {
-			return err
-		}
-		return nil
+		return err
 	case rp.RuleSetProvider:
 		rsp := p.(*rp.RuleSetProvider)
 		_, _, err := rsp.SideUpdate(bytes)
-		if err == nil {
-			return err
-		}
-		return nil
+		return err
 	default:
 		return errors.New("not external provider")
 	}
 }
 
 func updateListeners() {
-	if !isRunning {
+	if !isRunning.Load() {
 		return
 	}
 	if currentConfig == nil {
@@ -182,8 +181,8 @@ func readFile(path string) ([]byte, error) {
 }
 
 func updateConfig(params *UpdateParams) {
-	runLock.Lock()
-	defer runLock.Unlock()
+	configLock.Lock()
+	defer configLock.Unlock()
 	general := currentConfig.General
 	if params.MixedPort != nil {
 		general.MixedPort = *params.MixedPort
@@ -251,8 +250,8 @@ func updateConfig(params *UpdateParams) {
 
 func applyConfig(params *SetupParams) error {
 	runtime.GC()
-	runLock.Lock()
-	defer runLock.Unlock()
+	configLock.Lock()
+	defer configLock.Unlock()
 	var err error
 	constant.DefaultTestURL = params.TestURL
 	currentConfig, err = executor.ParseWithPath(filepath.Join(constant.Path.HomeDir(), "config.yaml"))

@@ -26,18 +26,19 @@ import (
 	"runtime"
 	"runtime/debug"
 	"strconv"
+	"sync/atomic"
 	"time"
 )
 
 var (
-	isInit            = false
+	isInit            atomic.Bool
 	externalProviders = map[string]cp.Provider{}
 	logSubscriber     observable.Subscription[log.Event]
 )
 
 func handleInitClash(paramsString string) bool {
-	runLock.Lock()
-	defer runLock.Unlock()
+	configLock.Lock()
+	defer configLock.Unlock()
 	var params = InitParams{}
 	err := json.Unmarshal([]byte(paramsString), &params)
 	if err != nil {
@@ -45,30 +46,30 @@ func handleInitClash(paramsString string) bool {
 	}
 	version = params.Version
 	constant.SetHomeDir(params.HomeDir)
-	isInit = true
-	return isInit
+	isInit.Store(true)
+	return isInit.Load()
 }
 
 func handleStartListener() bool {
-	runLock.Lock()
-	defer runLock.Unlock()
-	isRunning = true
+	configLock.Lock()
+	defer configLock.Unlock()
+	isRunning.Store(true)
 	updateListeners()
 	resolver.ResetConnection()
 	return true
 }
 
 func handleStopListener() bool {
-	runLock.Lock()
-	defer runLock.Unlock()
-	isRunning = false
+	configLock.Lock()
+	defer configLock.Unlock()
+	isRunning.Store(false)
 	listener.StopListener()
 	resolver.ResetConnection()
 	return true
 }
 
 func handleGetIsInit() bool {
-	return isInit
+	return isInit.Load()
 }
 
 func handleForceGC() {
@@ -80,10 +81,12 @@ func handleForceGC() {
 }
 
 func handleShutdown() bool {
+	configLock.Lock()
+	defer configLock.Unlock()
 	stopListeners()
 	executor.Shutdown()
 	handleForceGC()
-	isInit = false
+	isInit.Store(false)
 	return true
 }
 
@@ -97,8 +100,8 @@ func handleValidateConfig(path string) string {
 }
 
 func handleGetProxies() ProxiesData {
-	runLock.Lock()
-	defer runLock.Unlock()
+	proxyLock.RLock()
+	defer proxyLock.RUnlock()
 
 	nameList := config.GetProxyNameList()
 
@@ -137,9 +140,9 @@ func handleGetProxies() ProxiesData {
 }
 
 func handleChangeProxy(data string, fn func(string string)) {
-	runLock.Lock()
+	proxyLock.Lock()
 	go func() {
-		defer runLock.Unlock()
+		defer proxyLock.Unlock()
 		var params = &ChangeProxyParams{}
 		err := json.Unmarshal([]byte(data), params)
 		if err != nil {
@@ -176,6 +179,8 @@ func handleChangeProxy(data string, fn func(string string)) {
 }
 
 func handleGetTraffic(onlyStatisticsProxy bool) string {
+	connLock.RLock()
+	defer connLock.RUnlock()
 	up, down := statistic.DefaultManager.NowTraffic(onlyStatisticsProxy)
 	traffic := map[string]int64{
 		"up":   up,
@@ -261,8 +266,8 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 }
 
 func handleGetConnections() string {
-	runLock.Lock()
-	defer runLock.Unlock()
+	connLock.RLock()
+	defer connLock.RUnlock()
 	snapshot := statistic.DefaultManager.Snapshot()
 	data, err := json.Marshal(snapshot)
 	if err != nil {
@@ -273,32 +278,29 @@ func handleGetConnections() string {
 }
 
 func handleCloseConnections() bool {
-	runLock.Lock()
-	defer runLock.Unlock()
+	connLock.Lock()
+	defer connLock.Unlock()
 	closeConnections()
 	return true
 }
 
 func closeConnections() {
 	statistic.DefaultManager.Range(func(c statistic.Tracker) bool {
-		err := c.Close()
-		if err != nil {
-			return false
-		}
+		_ = c.Close()
 		return true
 	})
 }
 
 func handleResetConnections() bool {
-	runLock.Lock()
-	defer runLock.Unlock()
+	connLock.Lock()
+	defer connLock.Unlock()
 	resolver.ResetConnection()
 	return true
 }
 
 func handleCloseConnection(connectionId string) bool {
-	runLock.Lock()
-	defer runLock.Unlock()
+	connLock.Lock()
+	defer connLock.Unlock()
 	c := statistic.DefaultManager.Get(connectionId)
 	if c == nil {
 		return false
@@ -308,10 +310,10 @@ func handleCloseConnection(connectionId string) bool {
 }
 
 func handleGetExternalProviders() string {
-	runLock.Lock()
-	defer runLock.Unlock()
+	providerLock.RLock()
+	defer providerLock.RUnlock()
 	externalProviders = getExternalProvidersRaw()
-	eps := make([]ExternalProvider, 0)
+	eps := make([]ExternalProvider, 0, len(externalProviders))
 	for _, p := range externalProviders {
 		externalProvider, err := toExternalProvider(p)
 		if err != nil {
@@ -330,8 +332,8 @@ func handleGetExternalProviders() string {
 }
 
 func handleGetExternalProvider(externalProviderName string) string {
-	runLock.Lock()
-	defer runLock.Unlock()
+	providerLock.RLock()
+	defer providerLock.RUnlock()
 	externalProvider, exist := externalProviders[externalProviderName]
 	if !exist {
 		return ""
@@ -368,6 +370,8 @@ func handleUpdateGeoData(geoType string) {
 
 func handleUpdateExternalProvider(providerName string, fn func(value string)) {
 	go func() {
+		providerLock.Lock()
+		defer providerLock.Unlock()
 		externalProvider, exist := externalProviders[providerName]
 		if !exist {
 			fn("external provider is not exist")
@@ -384,8 +388,8 @@ func handleUpdateExternalProvider(providerName string, fn func(value string)) {
 
 func handleSideLoadExternalProvider(providerName string, data []byte, fn func(value string)) {
 	go func() {
-		runLock.Lock()
-		defer runLock.Unlock()
+		providerLock.Lock()
+		defer providerLock.Unlock()
 		externalProvider, exist := externalProviders[providerName]
 		if !exist {
 			fn("external provider is not exist")
@@ -410,6 +414,8 @@ func handleSuspend(suspended bool) bool {
 }
 
 func handleStartLog() {
+	configLock.RLock()
+	defer configLock.RUnlock()
 	if logSubscriber != nil {
 		log.UnSubscribe(logSubscriber)
 		logSubscriber = nil
@@ -438,8 +444,8 @@ func handleStopLog() {
 
 func handleGetCountryCode(ip string, fn func(value string)) {
 	go func() {
-		runLock.Lock()
-		defer runLock.Unlock()
+		geoLock.Lock()
+		defer geoLock.Unlock()
 		codes := mmdb.IPInstance().LookupCode(net.ParseIP(ip))
 		if len(codes) == 0 {
 			fn("")
@@ -509,7 +515,7 @@ func handleDelFile(path string, result ActionResult) {
 }
 
 func handleSetupConfig(bytes []byte) string {
-	if !isInit {
+	if !isInit.Load() {
 		return "not initialized"
 	}
 	var params = defaultSetupParams()
