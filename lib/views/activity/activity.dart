@@ -26,6 +26,7 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
   Set<String> _activeConnectionIds = {};
   late final ScrollController _scrollController;
   Timer? _connectionTimer;
+  bool _isPollingConnections = false;
 
   void _onSearch(String value) {
     _stateNotifier.value = _stateNotifier.value.copyWith(query: value);
@@ -48,17 +49,47 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
       _requests = next;
       _updateActivitiesThrottler();
     });
-    _startConnectionPolling();
+    ref.listenManual(currentPageLabelProvider, (_, next) {
+      if (next == PageLabel.activity) {
+        _startConnectionPolling();
+      } else {
+        _stopConnectionPolling();
+      }
+    });
+    if (ref.read(currentPageLabelProvider) == PageLabel.activity) {
+      _startConnectionPolling();
+    }
   }
 
   void _startConnectionPolling() {
-    _connectionTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
-      if (!mounted) return;
-      try {
-        final connections = await coreController.getConnections();
-        _activeConnectionIds = connections.map((c) => c.id).toSet();
-        _updateActivitiesThrottler();
-      } catch (_) {}
+    if (_connectionTimer != null || _isPollingConnections) return;
+    _pollConnections();
+  }
+
+  void _stopConnectionPolling() {
+    _connectionTimer?.cancel();
+    _connectionTimer = null;
+  }
+
+  Future<void> _pollConnections() async {
+    if (!mounted || ref.read(currentPageLabelProvider) != PageLabel.activity) {
+      _stopConnectionPolling();
+      return;
+    }
+    _isPollingConnections = true;
+    try {
+      final connections = await coreController.getConnections();
+      _activeConnectionIds = connections.map((c) => c.id).toSet();
+      _updateActivitiesThrottler();
+    } catch (_) {}
+    _isPollingConnections = false;
+    if (!mounted || ref.read(currentPageLabelProvider) != PageLabel.activity) {
+      _stopConnectionPolling();
+      return;
+    }
+    _connectionTimer = Timer(const Duration(seconds: 1), () {
+      _connectionTimer = null;
+      _pollConnections();
     });
   }
 
@@ -70,10 +101,14 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
   }
 
   void _refreshActivities() {
-    final items = _requests.map((info) => ActivityItem(
-      trackerInfo: info,
-      status: inferStatus(info, _activeConnectionIds),
-    )).toList();
+    final items = _requests
+        .map(
+          (info) => ActivityItem(
+            trackerInfo: info,
+            status: inferStatus(info, _activeConnectionIds),
+          ),
+        )
+        .toList();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         _stateNotifier.value = _stateNotifier.value.copyWith(items: items);
@@ -87,7 +122,7 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
 
   @override
   void dispose() {
-    _connectionTimer?.cancel();
+    _stopConnectionPolling();
     _stateNotifier.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -97,8 +132,9 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
     return [
       IconButton(
         onPressed: () async {
-          coreController.closeConnections();
+          ref.read(requestsProvider.notifier).clear();
         },
+        tooltip: '清空活动',
         icon: const Icon(Icons.delete_sweep_outlined),
       ),
     ];
@@ -135,33 +171,8 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
         builder: (context, state, _) {
           final items = state.filteredList;
           if (items.isEmpty) {
-            return NullStatus(
-              label: '暂无活动',
-            );
+            return const NullStatus(label: '暂无活动');
           }
-          final widgets = items
-              .map<Widget>(
-                (activityItem) => ActivityItemWidget(
-                  key: Key(activityItem.trackerInfo.id),
-                  activityItem: activityItem,
-                  onClickKeyword: (value) {
-                    context.commonScaffoldState?.addKeyword(value);
-                  },
-                  trailing: activityItem.status == ActivityStatus.ongoing
-                      ? IconButton(
-                          padding: EdgeInsets.zero,
-                          visualDensity: VisualDensity.compact,
-                          style: IconButton.styleFrom(minimumSize: Size.zero),
-                          icon: const Icon(Icons.block),
-                          onPressed: () {
-                            _handleBlockConnection(activityItem.trackerInfo.id);
-                          },
-                        )
-                      : null,
-                ),
-              )
-              .separated(const Divider(height: 0))
-              .toList();
           return Column(
             children: [
               ActivityFilterBar(
@@ -190,12 +201,38 @@ class _ActivityViewState extends ConsumerState<ActivityView> {
                       child: SuperListView.builder(
                         reverse: true,
                         shrinkWrap: true,
-                        physics: NextClampingScrollPhysics(),
+                        physics: const NextClampingScrollPhysics(),
                         controller: _scrollController,
                         itemBuilder: (_, index) {
-                          return widgets[index];
+                          if (index.isOdd) {
+                            return const Divider(height: 0);
+                          }
+                          final activityItem = items[index ~/ 2];
+                          return ActivityItemWidget(
+                            key: Key(activityItem.trackerInfo.id),
+                            activityItem: activityItem,
+                            onClickKeyword: (value) {
+                              context.commonScaffoldState?.addKeyword(value);
+                            },
+                            trailing:
+                                activityItem.status == ActivityStatus.ongoing
+                                ? IconButton(
+                                    padding: EdgeInsets.zero,
+                                    visualDensity: VisualDensity.compact,
+                                    style: IconButton.styleFrom(
+                                      minimumSize: Size.zero,
+                                    ),
+                                    icon: const Icon(Icons.block),
+                                    onPressed: () {
+                                      _handleBlockConnection(
+                                        activityItem.trackerInfo.id,
+                                      );
+                                    },
+                                  )
+                                : null,
+                          );
                         },
-                        itemCount: widgets.length,
+                        itemCount: items.length * 2 - 1,
                       ),
                     ),
                   ),

@@ -10,6 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'detail.dart';
 
+final _packageIconCache = <String, Future<ImageProvider?>>{};
+
 class ActivityItemWidget extends ConsumerWidget {
   final ActivityItem activityItem;
   final Function(String)? onClickKeyword;
@@ -26,11 +28,20 @@ class ActivityItemWidget extends ConsumerWidget {
     return globalState.measure.bodySmallHeight + 20;
   }
 
-  Future<ImageProvider?> _getPackageIcon(TrackerInfo connection) async {
-    return await app?.getPackageIcon(connection.metadata.process);
+  Future<ImageProvider?> _getPackageIcon(TrackerInfo connection) {
+    final process = connection.metadata.process;
+    if (process.isEmpty) return Future.value();
+    return _packageIconCache.putIfAbsent(
+      process,
+      () => app?.getPackageIcon(process) ?? Future.value(),
+    );
   }
 
-  String _getSourceText(TrackerInfo trackerInfo, ActivityStatus status) {
+  String _getSourceText(
+    BuildContext context,
+    TrackerInfo trackerInfo,
+    ActivityStatus status,
+  ) {
     final progress = trackerInfo.progressText.isNotEmpty
         ? '${trackerInfo.progressText} · '
         : '';
@@ -54,7 +65,7 @@ class ActivityItemWidget extends ConsumerWidget {
         errorSummary = ' · 连接失败';
       }
     }
-    return '${trackerInfo.start.lastUpdateTimeDesc}$rule$progress · ${traffic.desc}$errorSummary';
+    return '${trackerInfo.start.getLastUpdateTimeDesc(context)}$rule$progress · ${traffic.desc}$errorSummary';
   }
 
   Color _getStatusColor(ActivityStatus status, ColorScheme colorScheme) {
@@ -105,7 +116,7 @@ class ActivityItemWidget extends ConsumerWidget {
         Text(trackerInfo.desc, style: context.textTheme.bodyLarge),
         const SizedBox(height: 6),
         Text(
-          _getSourceText(trackerInfo, status),
+          _getSourceText(context, trackerInfo, status),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: context.textTheme.bodyMedium?.copyWith(
@@ -143,7 +154,7 @@ class ActivityItemWidget extends ConsumerWidget {
               },
             ),
           ),
-          if (trailing != null) trailing!,
+          ?trailing,
         ],
       ),
     );
@@ -196,9 +207,8 @@ class ActivityItemWidget extends ConsumerWidget {
             onTap: () {
               showExtend(
                 context,
-                builder: (_, type) {
+                builder: (_) {
                   return AdaptiveSheetScaffold(
-                    type: type,
                     body: ActivityDetailView(activityItem: activityItem),
                     title: '活动详情',
                   );
@@ -215,7 +225,7 @@ class ActivityItemWidget extends ConsumerWidget {
                   spacing: 8,
                   children: [
                     _buildStatusBadge(status, colorScheme),
-                    if (icon != null) icon,
+                    ?icon,
                     Flexible(child: title),
                   ],
                 ),

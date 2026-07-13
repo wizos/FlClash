@@ -6,6 +6,8 @@
   "proxies": "Proxies",
   "profile": "Profile",
   "profiles": "Profiles",
+  "activity": "Activity",
+  "activityDesc": "View recent network activity",
   "tools": "Tools",
   "logs": "Logs",
   "logsDesc": "Log capture records",

@@ -6,6 +6,8 @@
   "proxies": "代理",
   "profile": "配置",
   "profiles": "配置",
+  "activity": "活动",
+  "activityDesc": "查看最近网络活动",
   "tools": "工具",
   "logs": "日志",
   "logsDesc": "日志捕获记录",

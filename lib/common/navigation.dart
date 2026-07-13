@@ -34,6 +34,7 @@ class Navigation {
             const ProfilesView(key: GlobalObjectKey(PageLabel.profiles)),
       ),
       NavigationItem(
+        keep: false,
         icon: const Icon(Icons.bolt),
         label: PageLabel.activity,
         builder: (_) =>
@@ -50,6 +51,7 @@ class Navigation {
         modes: [NavigationItemMode.desktop, NavigationItemMode.more],
       ),
       NavigationItem(
+        keep: false,
         icon: const Icon(Icons.ballot),
         label: PageLabel.connections,
         builder: (_) =>

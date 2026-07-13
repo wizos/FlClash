@@ -8,6 +8,8 @@ import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+final _packageIconCache = <String, Future<ImageProvider?>>{};
+
 class TrackerInfoItem extends ConsumerWidget {
   final TrackerInfo trackerInfo;
   final Function(String)? onClickKeyword;
@@ -26,8 +28,13 @@ class TrackerInfoItem extends ConsumerWidget {
     return globalState.measure.bodySmallHeight + 20;
   }
 
-  Future<ImageProvider?> _getPackageIcon(TrackerInfo connection) async {
-    return await app?.getPackageIcon(connection.metadata.process);
+  Future<ImageProvider?> _getPackageIcon(TrackerInfo connection) {
+    final process = connection.metadata.process;
+    if (process.isEmpty) return Future.value();
+    return _packageIconCache.putIfAbsent(
+      process,
+      () => app?.getPackageIcon(process) ?? Future.value(),
+    );
   }
 
   String _getSourceText(BuildContext context, TrackerInfo trackerInfo) {

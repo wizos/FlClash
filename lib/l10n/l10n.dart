@@ -89,6 +89,21 @@ class AppLocalizations {
     return Intl.message('Profiles', name: 'profiles', desc: '', args: []);
   }
 
+  /// `Activity`
+  String get activity {
+    return Intl.message('Activity', name: 'activity', desc: '', args: []);
+  }
+
+  /// `View recent network activity`
+  String get activityDesc {
+    return Intl.message(
+      'View recent network activity',
+      name: 'activityDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Tools`
   String get tools {
     return Intl.message('Tools', name: 'tools', desc: '', args: []);

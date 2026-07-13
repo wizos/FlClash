@@ -3,46 +3,77 @@ import 'dart:io';
 
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/controller.dart';
+import 'package:fl_clash/enum/enum.dart';
+import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/state.dart';
 import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final _memoryStateNotifier = ValueNotifier<num>(0);
 
-class MemoryInfo extends StatefulWidget {
+class MemoryInfo extends ConsumerStatefulWidget {
   const MemoryInfo({super.key});
 
   @override
-  State<MemoryInfo> createState() => _MemoryInfoState();
+  ConsumerState<MemoryInfo> createState() => _MemoryInfoState();
 }
 
-class _MemoryInfoState extends State<MemoryInfo> {
+class _MemoryInfoState extends ConsumerState<MemoryInfo> {
   Timer? timer;
+  bool _isUpdating = false;
 
   @override
   void initState() {
     super.initState();
-    _updateMemory();
+    ref.listenManual(currentPageLabelProvider, (_, next) {
+      if (next == PageLabel.dashboard) {
+        _updateMemory();
+      } else {
+        _stopTimer();
+      }
+    });
+    if (ref.read(currentPageLabelProvider) == PageLabel.dashboard) {
+      _updateMemory();
+    }
   }
 
   @override
   void dispose() {
-    timer?.cancel();
+    _stopTimer();
     super.dispose();
   }
 
+  void _stopTimer() {
+    timer?.cancel();
+    timer = null;
+  }
+
   Future<void> _updateMemory() async {
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (_isUpdating ||
+        timer != null ||
+        !mounted ||
+        ref.read(currentPageLabelProvider) != PageLabel.dashboard) {
+      return;
+    }
+    _isUpdating = true;
+    try {
       final rss = ProcessInfo.currentRss;
       if (coreController.isCompleted) {
         _memoryStateNotifier.value = await coreController.getMemory() + rss;
       } else {
         _memoryStateNotifier.value = rss;
       }
-      timer = Timer(const Duration(seconds: 2), () async {
-        _updateMemory();
-      });
-    });
+    } finally {
+      _isUpdating = false;
+      if (mounted &&
+          ref.read(currentPageLabelProvider) == PageLabel.dashboard) {
+        timer = Timer(const Duration(seconds: 2), () {
+          timer = null;
+          _updateMemory();
+        });
+      }
+    }
   }
 
   @override

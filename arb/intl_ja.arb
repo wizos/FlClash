@@ -6,6 +6,8 @@
   "proxies": "プロキシ",
   "profile": "プロファイル",
   "profiles": "プロファイル一覧",
+  "activity": "アクティビティ",
+  "activityDesc": "最近のネットワークアクティビティを表示",
   "tools": "ツール",
   "logs": "ログ",
   "logsDesc": "ログキャプチャ記録",

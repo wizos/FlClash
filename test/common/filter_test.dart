@@ -170,4 +170,68 @@ void main() {
       expect(state.list[0].id, '2');
     });
   });
+
+  group('ActivityState.filteredList', () {
+    Metadata meta({
+      String host = 'example.com',
+      String destinationIP = '1.2.3.4',
+      String process = 'chrome',
+    }) => Metadata(
+      network: 'tcp',
+      host: host,
+      destinationIP: destinationIP,
+      process: process,
+    );
+
+    ActivityItem item(
+      String id, {
+      Metadata? metadata,
+      ActivityStatus status = ActivityStatus.success,
+    }) => ActivityItem(
+      trackerInfo: TrackerInfo(
+        id: id,
+        start: DateTime(2024),
+        metadata: metadata ?? meta(),
+        chains: const ['proxy-a'],
+        rule: 'MATCH',
+        rulePayload: '',
+      ),
+      status: status,
+    );
+
+    test('filters by keyword matching package name', () {
+      final state = ActivityState(
+        items: [
+          item('1', metadata: meta(process: 'com.android.chrome')),
+          item('2', metadata: meta(process: 'org.mozilla.firefox')),
+        ],
+        keywords: const ['org.mozilla.firefox'],
+      );
+
+      expect(state.filteredList.length, 1);
+      expect(state.filteredList[0].trackerInfo.id, '2');
+    });
+
+    test('combines status and keyword filters', () {
+      final state = ActivityState(
+        items: [
+          item(
+            '1',
+            metadata: meta(process: 'com.app'),
+            status: ActivityStatus.failed,
+          ),
+          item(
+            '2',
+            metadata: meta(process: 'com.app'),
+            status: ActivityStatus.success,
+          ),
+        ],
+        keywords: const ['com.app'],
+        filterStatus: ActivityStatus.failed,
+      );
+
+      expect(state.filteredList.length, 1);
+      expect(state.filteredList[0].trackerInfo.id, '1');
+    });
+  });
 }

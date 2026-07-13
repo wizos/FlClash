@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:fl_clash/common/common.dart';
 import 'package:fl_clash/core/controller.dart';
+import 'package:fl_clash/enum/enum.dart';
 import 'package:fl_clash/models/models.dart';
+import 'package:fl_clash/providers/providers.dart';
 import 'package:fl_clash/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,6 +26,7 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView> {
   final ScrollController _scrollController = ScrollController();
 
   Timer? timer;
+  bool _isUpdatingConnections = false;
 
   List<Widget> _buildActions() {
     return [
@@ -50,12 +53,27 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView> {
   }
 
   Future<void> _updateConnectionsTask() async {
+    if (_isUpdatingConnections || timer != null) return;
+    _isUpdatingConnections = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (mounted) {
-        await _updateConnections();
-        timer = Timer(const Duration(seconds: 1), () async {
-          _updateConnectionsTask();
-        });
+      try {
+        if (mounted &&
+            ref.read(currentPageLabelProvider) == PageLabel.connections) {
+          await _updateConnections();
+          if (!mounted ||
+              ref.read(currentPageLabelProvider) != PageLabel.connections) {
+            _stopPolling();
+            return;
+          }
+          timer = Timer(const Duration(seconds: 1), () {
+            timer = null;
+            _updateConnectionsTask();
+          });
+        } else {
+          _stopPolling();
+        }
+      } finally {
+        _isUpdatingConnections = false;
       }
     });
   }
@@ -63,7 +81,16 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView> {
   @override
   void initState() {
     super.initState();
-    _updateConnectionsTask();
+    ref.listenManual(currentPageLabelProvider, (_, next) {
+      if (next == PageLabel.connections) {
+        _updateConnectionsTask();
+      } else {
+        _stopPolling();
+      }
+    });
+    if (ref.read(currentPageLabelProvider) == PageLabel.connections) {
+      _updateConnectionsTask();
+    }
   }
 
   Future<void> _updateConnections() async {
@@ -79,11 +106,15 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView> {
 
   @override
   void dispose() {
-    timer?.cancel();
+    _stopPolling();
     _connectionsStateNotifier.dispose();
     _scrollController.dispose();
-    timer = null;
     super.dispose();
+  }
+
+  void _stopPolling() {
+    timer?.cancel();
+    timer = null;
   }
 
   @override
@@ -104,36 +135,34 @@ class _ConnectionsViewState extends ConsumerState<ConnectionsView> {
               illustration: const ConnectionEmptyIllustration(),
             );
           }
-          final items = connections
-              .map<Widget>(
-                (trackerInfo) => TrackerInfoItem(
-                  key: Key(trackerInfo.id),
-                  trackerInfo: trackerInfo,
-                  onClickKeyword: (value) {
-                    context.commonScaffoldState?.addKeyword(value);
-                  },
-                  trailing: IconButton(
-                    padding: EdgeInsets.zero,
-                    visualDensity: VisualDensity.compact,
-                    style: IconButton.styleFrom(minimumSize: Size.zero),
-                    icon: const Icon(Icons.block),
-                    onPressed: () {
-                      _handleBlockConnection(trackerInfo.id);
-                    },
-                  ),
-                  detailTitle: appLocalizations.details(
-                    appLocalizations.connection,
-                  ),
-                ),
-              )
-              .separated(const Divider(height: 0))
-              .toList();
           return SuperListView.builder(
             controller: _scrollController,
             itemBuilder: (context, index) {
-              return items[index];
+              if (index.isOdd) {
+                return const Divider(height: 0);
+              }
+              final trackerInfo = connections[index ~/ 2];
+              return TrackerInfoItem(
+                key: Key(trackerInfo.id),
+                trackerInfo: trackerInfo,
+                onClickKeyword: (value) {
+                  context.commonScaffoldState?.addKeyword(value);
+                },
+                trailing: IconButton(
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                  style: IconButton.styleFrom(minimumSize: Size.zero),
+                  icon: const Icon(Icons.block),
+                  onPressed: () {
+                    _handleBlockConnection(trackerInfo.id);
+                  },
+                ),
+                detailTitle: appLocalizations.details(
+                  appLocalizations.connection,
+                ),
+              );
             },
-            itemCount: connections.length,
+            itemCount: connections.length * 2 - 1,
           );
         },
       ),

@@ -16,14 +16,14 @@ class ActivityDetailView extends ConsumerStatefulWidget {
   const ActivityDetailView({super.key, required this.activityItem});
 
   @override
-  ConsumerState<ActivityDetailView> createState() =>
-      _ActivityDetailViewState();
+  ConsumerState<ActivityDetailView> createState() => _ActivityDetailViewState();
 }
 
 class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
   late TrackerInfo _trackerInfo;
   late ActivityStatus _status;
   Timer? _refreshTimer;
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -40,32 +40,40 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
   }
 
   void _startRefreshIfNeeded() {
-    if (_status != ActivityStatus.ongoing) return;
-    _refreshTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
-      if (!mounted) return;
-      try {
-        final connections = await coreController.getConnections();
-        final match = connections.where((c) => c.id == _trackerInfo.id);
-        if (match.isNotEmpty) {
-          final updated = match.first;
+    if (_status != ActivityStatus.ongoing || _refreshTimer != null) return;
+    _refreshTimer = Timer(const Duration(seconds: 2), _refreshConnection);
+  }
+
+  Future<void> _refreshConnection() async {
+    _refreshTimer = null;
+    if (!mounted || _status != ActivityStatus.ongoing || _isRefreshing) return;
+    _isRefreshing = true;
+    try {
+      final connections = await coreController.getConnections();
+      final match = connections.where((c) => c.id == _trackerInfo.id);
+      if (match.isNotEmpty) {
+        final updated = match.first;
+        if (mounted) {
           setState(() {
             _trackerInfo = updated;
           });
-        } else {
-          // Connection no longer active — stop refreshing
-          _refreshTimer?.cancel();
-          _refreshTimer = null;
-          setState(() {
-            // Re-infer status: if there was traffic, it succeeded; otherwise failed
-            if (_trackerInfo.upload > 0 || _trackerInfo.download > 0) {
-              _status = ActivityStatus.success;
-            } else {
-              _status = ActivityStatus.failed;
-            }
-          });
         }
-      } catch (_) {}
-    });
+      } else if (mounted) {
+        setState(() {
+          if (_trackerInfo.upload > 0 || _trackerInfo.download > 0) {
+            _status = ActivityStatus.success;
+          } else {
+            _status = ActivityStatus.failed;
+          }
+        });
+      }
+    } catch (_) {
+    } finally {
+      _isRefreshing = false;
+      if (mounted && _status == ActivityStatus.ongoing) {
+        _startRefreshIfNeeded();
+      }
+    }
   }
 
   @override
@@ -134,7 +142,9 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
     buf.writeln('Host: ${metadata.host}');
     buf.writeln('目标: ${metadata.destinationIP}:${metadata.destinationPort}');
     buf.writeln('进程: ${metadata.process}');
-    buf.writeln('规则: ${trackerInfo.rule}${trackerInfo.rulePayload.isNotEmpty ? '(${trackerInfo.rulePayload})' : ''}');
+    buf.writeln(
+      '规则: ${trackerInfo.rule}${trackerInfo.rulePayload.isNotEmpty ? '(${trackerInfo.rulePayload})' : ''}',
+    );
     buf.writeln('代理链: ${trackerInfo.chains.join(' → ')}');
     buf.writeln('上传: ${trackerInfo.upload}  下载: ${trackerInfo.download}');
     buf.writeln();
@@ -147,11 +157,15 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
           buf.write(stage.matched ? '命中' : '未命中');
         } else if (stage.name == 'resolve') {
           buf.write('server=${stage.server} ');
-          if (stage.policyKey.isNotEmpty) buf.write('policy=${stage.policyKey} ');
+          if (stage.policyKey.isNotEmpty) {
+            buf.write('policy=${stage.policyKey} ');
+          }
           buf.write('cache=${stage.cacheHit} ');
           buf.write('duration=${stage.duration}ms');
         }
-        if (stage.error.isNotEmpty) buf.write(' ERROR: ${stage.error}');
+        if (stage.error.isNotEmpty) {
+          buf.write(' ERROR: ${stage.error}');
+        }
         buf.writeln();
       }
     } else {
@@ -170,13 +184,15 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
     final stages = <_TimelineStage>[];
 
     // Stage 1: Intercept
-    stages.add(_TimelineStage(
-      name: '拦截',
-      status: _StageStatus.done,
-      detail: metadata.process.isNotEmpty
-          ? '进程 ${metadata.process}${metadata.uid != 0 ? ' (${metadata.uid})' : ''}'
-          : '系统代理',
-    ));
+    stages.add(
+      _TimelineStage(
+        name: '拦截',
+        status: _StageStatus.done,
+        detail: metadata.process.isNotEmpty
+            ? '进程 ${metadata.process}${metadata.uid != 0 ? ' (${metadata.uid})' : ''}'
+            : '系统代理',
+      ),
+    );
 
     // Stage 2: DNS Resolve (skip for REJECT)
     if (status != ActivityStatus.rejected) {
@@ -196,8 +212,8 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
           final stageStatus = dnsStage.error.isNotEmpty
               ? _StageStatus.fail
               : dnsStage.matched
-                  ? _StageStatus.done
-                  : _StageStatus.done;
+              ? _StageStatus.done
+              : _StageStatus.done;
 
           final detailParts = <String>[];
           if (dnsStage.name == 'hosts') {
@@ -224,12 +240,14 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
             }
           }
 
-          stages.add(_TimelineStage(
-            name: stageName,
-            status: stageStatus,
-            detail: detailParts.join(' · '),
-            error: dnsStage.error.isNotEmpty ? dnsStage.error : null,
-          ));
+          stages.add(
+            _TimelineStage(
+              name: stageName,
+              status: stageStatus,
+              detail: detailParts.join(' · '),
+              error: dnsStage.error.isNotEmpty ? dnsStage.error : null,
+            ),
+          );
         }
       } else if (host.isNotEmpty) {
         // Fallback: no dnsTrace, use inferred DNS info
@@ -237,16 +255,18 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
         final dnsDetail = dnsMode != null
             ? '$host → $destIP (${dnsMode.name})'
             : '$host → $destIP';
-        stages.add(_TimelineStage(
-          name: 'DNS 解析',
-          status: status == ActivityStatus.failed && destIP.isEmpty
-              ? _StageStatus.fail
-              : _StageStatus.done,
-          detail: dnsDetail,
-          error: status == ActivityStatus.failed && destIP.isEmpty
-              ? 'DNS 解析失败'
-              : null,
-        ));
+        stages.add(
+          _TimelineStage(
+            name: 'DNS 解析',
+            status: status == ActivityStatus.failed && destIP.isEmpty
+                ? _StageStatus.fail
+                : _StageStatus.done,
+            detail: dnsDetail,
+            error: status == ActivityStatus.failed && destIP.isEmpty
+                ? 'DNS 解析失败'
+                : null,
+          ),
+        );
       }
     }
 
@@ -255,61 +275,75 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
     final rulePayload = trackerInfo.rulePayload;
     if (rule.isNotEmpty) {
       final ruleText = rulePayload.isNotEmpty ? '$rule($rulePayload)' : rule;
-      stages.add(_TimelineStage(
-        name: '规则匹配',
-        status: _StageStatus.done,
-        detail: ruleText,
-      ));
+      stages.add(
+        _TimelineStage(
+          name: '规则匹配',
+          status: _StageStatus.done,
+          detail: ruleText,
+        ),
+      );
     }
 
     // Stage 4: Proxy Select (skip for REJECT/DIRECT)
     if (status != ActivityStatus.rejected) {
       final chains = trackerInfo.chains;
       if (chains.isNotEmpty && !chains.contains('DIRECT')) {
-        stages.add(_TimelineStage(
-          name: '代理选择',
-          status: _StageStatus.done,
-          detail: chains.join(' → '),
-        ));
+        stages.add(
+          _TimelineStage(
+            name: '代理选择',
+            status: _StageStatus.done,
+            detail: chains.join(' → '),
+          ),
+        );
       }
     }
 
     // Stage 5: Connection / Rejected
     if (status == ActivityStatus.rejected) {
-      stages.add(_TimelineStage(
-        name: '已拒绝',
-        status: _StageStatus.fail,
-        detail: '规则命中拒绝',
-      ));
+      stages.add(
+        const _TimelineStage(
+          name: '已拒绝',
+          status: _StageStatus.fail,
+          detail: '规则命中拒绝',
+        ),
+      );
     } else if (status == ActivityStatus.ongoing) {
-      stages.add(_TimelineStage(
-        name: '连接建立',
-        status: _StageStatus.active,
-        detail: trackerInfo.chains.isNotEmpty
-            ? '${trackerInfo.chains.last}:${metadata.destinationPort}'
-            : '连接中...',
-      ));
+      stages.add(
+        _TimelineStage(
+          name: '连接建立',
+          status: _StageStatus.active,
+          detail: trackerInfo.chains.isNotEmpty
+              ? '${trackerInfo.chains.last}:${metadata.destinationPort}'
+              : '连接中...',
+        ),
+      );
     } else if (status == ActivityStatus.success) {
-      stages.add(_TimelineStage(
-        name: '连接建立',
-        status: _StageStatus.done,
-        detail: trackerInfo.chains.isNotEmpty
-            ? '${trackerInfo.chains.last}:${metadata.destinationPort}'
-            : '已建立',
-      ));
+      stages.add(
+        _TimelineStage(
+          name: '连接建立',
+          status: _StageStatus.done,
+          detail: trackerInfo.chains.isNotEmpty
+              ? '${trackerInfo.chains.last}:${metadata.destinationPort}'
+              : '已建立',
+        ),
+      );
     } else if (status == ActivityStatus.failed) {
-      stages.add(_TimelineStage(
-        name: '连接建立',
-        status: _StageStatus.fail,
-        detail: '连接失败',
-        error: '超时或连接被拒绝',
-      ));
+      stages.add(
+        const _TimelineStage(
+          name: '连接建立',
+          status: _StageStatus.fail,
+          detail: '连接失败',
+          error: '超时或连接被拒绝',
+        ),
+      );
     }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Column(
-        children: stages.map((stage) => _buildStageItem(context, stage)).toList(),
+        children: stages
+            .map((stage) => _buildStageItem(context, stage))
+            .toList(),
       ),
     );
   }
@@ -348,10 +382,7 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
                   ),
                 ),
                 Expanded(
-                  child: Container(
-                    width: 2,
-                    color: colorScheme.outlineVariant,
-                  ),
+                  child: Container(width: 2, color: colorScheme.outlineVariant),
                 ),
               ],
             ),
@@ -382,7 +413,9 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
                       padding: const EdgeInsets.only(top: 2),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: colorScheme.error.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
@@ -469,7 +502,7 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: 20,
           children: [
-            Text('代理链'),
+            const Text('代理链'),
             Flexible(child: chains),
           ],
         ),
@@ -482,8 +515,7 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
         buildItem(title: '进程', desc: getProcessText()),
       buildItem(title: '网络类型', desc: metadata.network),
       buildItem(title: '规则', desc: getRuleText()),
-      if (metadata.host.isNotEmpty)
-        buildItem(title: '主机', desc: metadata.host),
+      if (metadata.host.isNotEmpty) buildItem(title: '主机', desc: metadata.host),
       if (getSourceText().isNotEmpty)
         buildItem(title: '来源', desc: getSourceText()),
       if (getDestinationText().isNotEmpty)
@@ -538,7 +570,9 @@ class _ActivityDetailViewState extends ConsumerState<ActivityDetailView> {
                   padding: const EdgeInsets.symmetric(horizontal: 4),
                   margin: const EdgeInsets.only(right: 6, top: 2),
                   decoration: BoxDecoration(
-                    color: _getLogLevelColor(log.logLevel).withValues(alpha: 0.15),
+                    color: _getLogLevelColor(
+                      log.logLevel,
+                    ).withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(3),
                   ),
                   child: Text(

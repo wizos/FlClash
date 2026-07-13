@@ -11,6 +11,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+final _packageIconCache = <String, Future<ImageProvider?>>{};
+
 class AccessView extends ConsumerStatefulWidget {
   const AccessView({super.key});
 
@@ -381,7 +383,7 @@ class _AccessViewState extends ConsumerState<AccessView> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(loadingProvider(LoadingTag.access));
-    final query = ref.watch(queryProvider(QueryTag.access));
+    final query = ref.watch(queryProvider(QueryTag.access)).toLowerCase();
     final packages = ref.watch(packagesProvider);
     final accessControl = ref.watch(accessControlStateProvider);
     if (_isInit) {
@@ -402,7 +404,7 @@ class _AccessViewState extends ConsumerState<AccessView> {
         .where(
           (package) =>
               package.label.toLowerCase().contains(query) ||
-              package.packageName.contains(query),
+              package.packageName.toLowerCase().contains(query),
         )
         .toList();
     final mode = accessControl.mode;
@@ -458,7 +460,10 @@ class PackageListItem extends StatelessWidget {
         width: 48,
         height: 48,
         child: FutureBuilder<ImageProvider?>(
-          future: app?.getPackageIcon(package.packageName),
+          future: _packageIconCache.putIfAbsent(
+            package.packageName,
+            () => app?.getPackageIcon(package.packageName) ?? Future.value(),
+          ),
           builder: (_, snapshot) {
             if (!snapshot.hasData && snapshot.data == null) {
               return Container();

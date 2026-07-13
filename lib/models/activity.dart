@@ -21,14 +21,14 @@ class DnsStage {
   });
 
   factory DnsStage.fromJson(Map<String, dynamic> json) => DnsStage(
-        name: json['name'] ?? '',
-        matched: json['matched'] ?? false,
-        server: json['server'] ?? '',
-        policyKey: json['policyKey'] ?? '',
-        cacheHit: json['cacheHit'] ?? false,
-        duration: json['duration'] ?? 0,
-        error: json['error'] ?? '',
-      );
+    name: json['name'] ?? '',
+    matched: json['matched'] ?? false,
+    server: json['server'] ?? '',
+    policyKey: json['policyKey'] ?? '',
+    cacheHit: json['cacheHit'] ?? false,
+    duration: json['duration'] ?? 0,
+    error: json['error'] ?? '',
+  );
 }
 
 class DnsTrace {
@@ -37,11 +37,12 @@ class DnsTrace {
   const DnsTrace({this.stages = const []});
 
   factory DnsTrace.fromJson(Map<String, dynamic> json) => DnsTrace(
-        stages: (json['stages'] as List?)
-                ?.map((e) => DnsStage.fromJson(e as Map<String, dynamic>))
-                .toList() ??
-            [],
-      );
+    stages:
+        (json['stages'] as List?)
+            ?.map((e) => DnsStage.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        [],
+  );
 }
 
 class ActivityItem {
@@ -53,10 +54,7 @@ class ActivityItem {
     this.status = ActivityStatus.ongoing,
   });
 
-  ActivityItem copyWith({
-    TrackerInfo? trackerInfo,
-    ActivityStatus? status,
-  }) {
+  ActivityItem copyWith({TrackerInfo? trackerInfo, ActivityStatus? status}) {
     return ActivityItem(
       trackerInfo: trackerInfo ?? this.trackerInfo,
       status: status ?? this.status,
@@ -113,12 +111,16 @@ class ActivityState {
     if (filterStatus != null) {
       result = result.where((a) => a.status == filterStatus).toList();
     }
+    for (final keyword in keywords.map((k) => k.toLowerCase().trim())) {
+      if (keyword.isEmpty) continue;
+      result = result.where((a) => _matchesText(a, keyword)).toList();
+    }
     final lowerQuery = query.toLowerCase().trim();
     if (lowerQuery.isNotEmpty) {
       // Support field-specific search: rule:DIRECT, chain:Proxy, host:google
-      final rulePrefix = 'rule:';
-      final chainPrefix = 'chain:';
-      final hostPrefix = 'host:';
+      const rulePrefix = 'rule:';
+      const chainPrefix = 'chain:';
+      const hostPrefix = 'host:';
       if (lowerQuery.startsWith(rulePrefix)) {
         final ruleQuery = lowerQuery.substring(rulePrefix.length);
         result = result.where((a) {
@@ -129,29 +131,30 @@ class ActivityState {
       } else if (lowerQuery.startsWith(chainPrefix)) {
         final chainQuery = lowerQuery.substring(chainPrefix.length);
         result = result.where((a) {
-          return a.trackerInfo.chains
-              .any((c) => c.toLowerCase().contains(chainQuery));
+          return a.trackerInfo.chains.any(
+            (c) => c.toLowerCase().contains(chainQuery),
+          );
         }).toList();
       } else if (lowerQuery.startsWith(hostPrefix)) {
         final hostQuery = lowerQuery.substring(hostPrefix.length);
         result = result.where((a) {
-          return a.trackerInfo.metadata.host
-              .toLowerCase()
-              .contains(hostQuery);
+          return a.trackerInfo.metadata.host.toLowerCase().contains(hostQuery);
         }).toList();
       } else {
         // Default: match host, process, chains, destinationIP, rule
-        result = result.where((a) {
-          final info = a.trackerInfo;
-          return info.metadata.host.toLowerCase().contains(lowerQuery) ||
-              info.metadata.process.toLowerCase().contains(lowerQuery) ||
-              info.chains.join('').toLowerCase().contains(lowerQuery) ||
-              info.metadata.destinationIP.toLowerCase().contains(lowerQuery) ||
-              info.rule.toLowerCase().contains(lowerQuery) ||
-              info.rulePayload.toLowerCase().contains(lowerQuery);
-        }).toList();
+        result = result.where((a) => _matchesText(a, lowerQuery)).toList();
       }
     }
     return result;
+  }
+
+  bool _matchesText(ActivityItem item, String query) {
+    final info = item.trackerInfo;
+    return info.metadata.host.toLowerCase().contains(query) ||
+        info.metadata.process.toLowerCase().contains(query) ||
+        info.chains.join('').toLowerCase().contains(query) ||
+        info.metadata.destinationIP.toLowerCase().contains(query) ||
+        info.rule.toLowerCase().contains(query) ||
+        info.rulePayload.toLowerCase().contains(query);
   }
 }
