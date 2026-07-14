@@ -87,9 +87,9 @@ jobs:
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -z "$KEYSTORE" ]; then
-            echo "Android signing secrets are unavailable; using debug signing."
-            exit 0
+          if [ -z "$KEYSTORE" ] || [ -z "$KEY_ALIAS" ] || [ -z "$STORE_PASSWORD" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Android release signing secrets are unavailable."
+            exit 1
           fi
           echo "$KEYSTORE" | base64 --decode > android/me-wizos-flanch.jks
           if [ -n "$SERVICE_JSON" ]; then
@@ -150,6 +150,27 @@ jobs:
           path: ./dist
           overwrite: true
           retention-days: 14
+
+  prerelease:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && contains(github.ref_name, '-') }}
+    permissions:
+      contents: write
+    needs: [ build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./dist/
+          pattern: artifact-*
+          merge-multiple: true
+
+      - name: Publish prerelease
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          generate_release_notes: true
+          files: ./dist/*
 
   changelog:
     if: ${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
